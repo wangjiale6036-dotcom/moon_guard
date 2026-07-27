@@ -1,0 +1,39 @@
+{
+  "$name": "payment-webhook",
+  "allOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "timestamp", "signature"],
+      "properties": {
+        "event": {
+          "enum": ["ping", "payment.succeeded", "payment.failed"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "signature": {
+          "type": "string",
+          "minLength": 32,
+          "asciiOnly": true
+        },
+        "data": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "when": {
+        "path": "/event",
+        "equals": "ping"
+      },
+      "then": true,
+      "else": {
+        "atPath": "/data",
+        "type": "object",
+        "minProperties": 1
+      }
+    }
+  ]
+}

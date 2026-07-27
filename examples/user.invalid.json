@@ -1,0 +1,8 @@
+{
+  "id": "not-a-uuid",
+  "email": "not-an-email",
+  "displayName": " ",
+  "age": 9,
+  "roles": ["owner", "owner"],
+  "unexpected": true
+}

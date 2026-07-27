@@ -1,0 +1,441 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wangjiale6036-dotcom/moon_guard"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn all_of(Array[Rule]) -> Rule
+
+pub fn analyze_rule(Rule) -> RuleAnalysis
+
+pub fn any_of(Array[Rule]) -> Rule
+
+pub fn any_value() -> Rule
+
+pub fn array() -> Rule
+
+pub fn array_rule(items? : Rule?, prefix_items? : Array[Rule], min_items? : Int?, max_items? : Int?, unique_items? : Bool, contains? : Rule?, min_contains? : Int, max_contains? : Int?) -> Rule
+
+pub fn at_path(String, Rule) -> Rule
+
+pub fn batch_issue_histogram(BatchReport) -> Array[IssueCount]
+
+pub fn batch_summary(BatchReport) -> String
+
+pub fn batch_to_json(BatchReport) -> String
+
+pub fn boolean() -> Rule
+
+pub fn child_paths(Json, path? : String, style? : String) -> Array[String]
+
+pub fn default_array_policy() -> ArrayPolicy
+
+pub fn default_number_policy() -> NumberPolicy
+
+pub fn default_object_policy() -> ObjectPolicy
+
+pub fn default_string_policy() -> StringPolicy
+
+pub fn default_validation_options() -> ValidationOptions
+
+pub fn dependency(String, Array[String]) -> PropertyDependency
+
+pub fn deprecated_property(String, Rule, required? : Bool, description? : String) -> PropertyRule
+
+pub fn equals(Json) -> Rule
+
+pub fn error_issues(ValidationReport) -> Array[ValidationIssue]
+
+pub fn escape_pointer_segment(String) -> String
+
+pub fn exactly_one_of(Array[Rule]) -> Rule
+
+pub fn first_issue(ValidationReport) -> ValidationIssue?
+
+pub fn glob_matches(String, String, case_sensitive? : Bool) -> Bool
+
+pub fn integer() -> Rule
+
+pub fn is_base64(String) -> Bool
+
+pub fn is_base64url(String) -> Bool
+
+pub fn is_credit_card(String) -> Bool
+
+pub fn is_date(String) -> Bool
+
+pub fn is_datetime(String) -> Bool
+
+pub fn is_email(String) -> Bool
+
+pub fn is_hostname(String) -> Bool
+
+pub fn is_identifier(String) -> Bool
+
+pub fn is_ipv4(String) -> Bool
+
+pub fn is_ipv4_cidr(String) -> Bool
+
+pub fn is_jwt(String) -> Bool
+
+pub fn is_mac_address(String) -> Bool
+
+pub fn is_semver(String) -> Bool
+
+pub fn is_slug(String) -> Bool
+
+pub fn is_time(String) -> Bool
+
+pub fn is_uri(String) -> Bool
+
+pub fn is_uuid(String) -> Bool
+
+pub fn is_valid(Rule, Json) -> Bool
+
+pub fn issue_histogram(ValidationReport) -> Array[IssueCount]
+
+pub fn issues_at(ValidationReport, String) -> Array[ValidationIssue]
+
+pub fn json_at_path(Json, String) -> Json?
+
+pub fn json_kind(Json) -> ValueKind
+
+pub fn json_preview(Json, maximum_length? : Int) -> String
+
+pub fn kind(ValueKind) -> Rule
+
+pub fn kind_name(ValueKind) -> String
+
+pub fn list_of(Rule) -> Rule
+
+pub fn literal_number(Double) -> Rule
+
+pub fn literal_string(String) -> Rule
+
+pub fn merge_reports(Array[ValidationReport]) -> ValidationReport
+
+pub fn named(String, Rule, description? : String) -> Rule
+
+pub fn negative_number() -> Rule
+
+pub fn new_validator(Rule, options? : ValidationOptions) -> Validator
+
+pub fn non_empty_list(Rule) -> Rule
+
+pub fn none_of(Array[Rule]) -> Rule
+
+pub fn not_rule(Rule) -> Rule
+
+pub fn null_value() -> Rule
+
+pub fn nullable(Rule) -> Rule
+
+pub fn number() -> Rule
+
+pub fn number_rule(minimum? : Double?, maximum? : Double?, exclusive_minimum? : Double?, exclusive_maximum? : Double?, multiple_of? : Double?, integer_only? : Bool, non_zero? : Bool, positive? : Bool, negative? : Bool) -> Rule
+
+pub fn object() -> Rule
+
+pub fn object_rule(properties? : Array[PropertyRule], allow_additional? : Bool, additional_rule? : Rule?, min_properties? : Int?, max_properties? : Int?, dependencies? : Array[PropertyDependency], mutually_exclusive? : Array[Array[String]], at_least_one? : Array[Array[String]]) -> Rule
+
+pub fn one_of_strings(Array[String]) -> Rule
+
+pub fn one_of_values(Array[Json]) -> Rule
+
+pub fn optimize_rule(Rule) -> Rule
+
+pub fn optional(Rule) -> Rule
+
+pub fn optional_property(String, Rule, description? : String) -> PropertyRule
+
+pub fn parse_rule_document(String) -> RuleParseResult
+
+pub fn path_exists(Json, String) -> Bool
+
+pub fn positive_number() -> Rule
+
+pub fn prefix_report_paths(ValidationReport, String) -> ValidationReport
+
+pub fn property(String, Rule, required? : Bool, deprecated? : Bool, description? : String) -> PropertyRule
+
+pub fn range(Double, Double) -> Rule
+
+pub fn reject(message? : String) -> Rule
+
+pub fn report_to_json(ValidationReport) -> String
+
+pub fn root_path(String) -> String
+
+pub fn rule_from_json(String) -> Rule?
+
+pub fn rule_is_well_formed(Rule) -> Bool
+
+pub fn rule_node_count(Rule) -> Int
+
+pub fn rule_outline(Rule) -> String
+
+pub fn rule_round_trip(Rule) -> Rule?
+
+pub fn rule_to_json(Rule, indent? : Int) -> String
+
+pub fn sample_invalid_user_json() -> String
+
+pub fn sample_order_rule() -> Rule
+
+pub fn sample_user_rule() -> Rule
+
+pub fn sample_valid_user_json() -> String
+
+pub fn sample_webhook_rule() -> Rule
+
+pub fn strict_object(Array[PropertyRule]) -> Rule
+
+pub fn string() -> Rule
+
+pub fn string_rule(min_length? : Int?, max_length? : Int?, exact_length? : Int?, prefix? : String?, suffix? : String?, contains? : String?, pattern? : String?, format? : String?, allowed? : Array[String], forbidden? : Array[String], ascii_only? : Bool, non_blank? : Bool, case_sensitive? : Bool) -> Rule
+
+pub fn supported_formats() -> Array[String]
+
+pub fn text_contains(String, String, Bool) -> Bool
+
+pub fn text_equal(String, String, Bool) -> Bool
+
+pub fn text_has_prefix(String, String, Bool) -> Bool
+
+pub fn text_has_suffix(String, String, Bool) -> Bool
+
+pub fn tuple(Array[Rule]) -> Rule
+
+pub fn validate(Rule, Json, options? : ValidationOptions) -> ValidationReport
+
+pub fn validate_batch(Rule, Array[ValidationCase], options? : ValidationOptions) -> BatchReport
+
+pub fn validate_format(String, String) -> Bool
+
+pub fn validate_json(Rule, String, options? : ValidationOptions) -> ValidationReport
+
+pub fn validate_json_array(Rule, String, options? : ValidationOptions) -> BatchReport
+
+pub fn validate_json_lines(Rule, String, options? : ValidationOptions) -> BatchReport
+
+pub fn value_matches_kind(Json, ValueKind) -> Bool
+
+pub fn warning(String, Rule) -> Rule
+
+pub fn warning_issues(ValidationReport) -> Array[ValidationIssue]
+
+pub fn when(Predicate, Rule, else_rule? : Rule?) -> Rule
+
+// Errors
+
+// Types and methods
+pub(all) struct ArrayPolicy {
+  items : Rule?
+  prefix_items : Array[Rule]
+  min_items : Int?
+  max_items : Int?
+  unique_items : Bool
+  contains : Rule?
+  min_contains : Int
+  max_contains : Int?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct BatchReport {
+  valid : Bool
+  total : Int
+  passed : Int
+  failed : Int
+  cases : Array[CaseReport]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CaseReport {
+  id : String
+  report : ValidationReport
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct IssueCount {
+  code : String
+  count : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct NumberPolicy {
+  minimum : Double?
+  maximum : Double?
+  exclusive_minimum : Double?
+  exclusive_maximum : Double?
+  multiple_of : Double?
+  integer_only : Bool
+  non_zero : Bool
+  positive : Bool
+  negative : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ObjectPolicy {
+  properties : Array[PropertyRule]
+  allow_additional : Bool
+  additional_rule : Rule?
+  min_properties : Int?
+  max_properties : Int?
+  dependencies : Array[PropertyDependency]
+  mutually_exclusive : Array[Array[String]]
+  at_least_one : Array[Array[String]]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Predicate {
+  Always
+  Never
+  Exists(String)
+  Missing(String)
+  Equals(String, Json)
+  KindIs(String, ValueKind)
+  Validates(String, Rule)
+  AllPredicates(Array[Predicate])
+  AnyPredicate(Array[Predicate])
+  NotPredicate(Predicate)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PropertyDependency {
+  property : String
+  requires : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PropertyRule {
+  name : String
+  rule : Rule
+  required : Bool
+  deprecated : Bool
+  description : String
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Rule {
+  Accept
+  Reject(String)
+  Kind(ValueKind)
+  StringMatches(StringPolicy)
+  NumberMatches(NumberPolicy)
+  ArrayMatches(ArrayPolicy)
+  ObjectMatches(ObjectPolicy)
+  EqualsValue(Json)
+  InValues(Array[Json])
+  AllOf(Array[Rule])
+  AnyOf(Array[Rule])
+  OneOf(Array[Rule])
+  NoneOf(Array[Rule])
+  NotRule(Rule)
+  Nullable(Rule)
+  Optional(Rule)
+  When(Predicate, Rule, Rule?)
+  AtPath(String, Rule)
+  Named(String, String, Rule)
+  WarningRule(String, Rule)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct RuleAnalysis {
+  node_count : Int
+  maximum_depth : Int
+  object_property_count : Int
+  conditional_count : Int
+  named_rules : Array[String]
+  warnings : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuleParseResult {
+  rule : Rule?
+  errors : Array[String]
+  warnings : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Severity {
+  Error
+  Warning
+  Info
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct StringPolicy {
+  min_length : Int?
+  max_length : Int?
+  exact_length : Int?
+  prefix : String?
+  suffix : String?
+  contains : String?
+  pattern : String?
+  format : String?
+  allowed : Array[String]
+  forbidden : Array[String]
+  ascii_only : Bool
+  non_blank : Bool
+  case_sensitive : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ValidationCase {
+  id : String
+  value : Json
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ValidationIssue {
+  path : String
+  code : String
+  keyword : String
+  message : String
+  severity : Severity
+  rule_name : String
+  value_preview : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ValidationOptions {
+  fail_fast : Bool
+  max_issues : Int
+  max_depth : Int
+  max_rule_visits : Int
+  include_value_preview : Bool
+  include_warnings : Bool
+  path_style : String
+} derive(Eq, @debug.Debug)
+pub fn ValidationOptions::with_fail_fast(Self, Bool) -> Self
+pub fn ValidationOptions::with_max_depth(Self, Int) -> Self
+pub fn ValidationOptions::with_max_issues(Self, Int) -> Self
+pub fn ValidationOptions::with_path_style(Self, String) -> Self
+pub fn ValidationOptions::with_rule_budget(Self, Int) -> Self
+pub fn ValidationOptions::with_value_preview(Self, Bool) -> Self
+pub fn ValidationOptions::with_warnings(Self, Bool) -> Self
+
+pub(all) struct ValidationReport {
+  valid : Bool
+  issues : Array[ValidationIssue]
+  stats : ValidationStats
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ValidationStats {
+  rule_visits : Int
+  values_checked : Int
+  maximum_depth : Int
+  error_count : Int
+  warning_count : Int
+  info_count : Int
+  truncated : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct Validator {
+  rule : Rule
+  options : ValidationOptions
+}
+pub fn Validator::validate(Self, Json) -> ValidationReport
+pub fn Validator::validate_json(Self, String) -> ValidationReport
+
+pub(all) enum ValueKind {
+  AnyValue
+  NullValue
+  BooleanValue
+  NumberValue
+  IntegerValue
+  StringValue
+  ArrayValue
+  ObjectValue
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
