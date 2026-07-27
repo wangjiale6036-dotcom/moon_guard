@@ -4,7 +4,7 @@
 
 - 项目名称：MoonGuard：MoonBit 原生 API 动态规则校验引擎
 - 参赛者：gale
-- 联系方式：wangjiale6036@gmail.com
+- 联系方式：316447364@qq.com
 - GitHub：https://github.com/wangjiale6036-dotcom/moon_guard
 - 项目方向：API 动态规则校验引擎
 - 项目性质：原创项目，非移植项目
