@@ -373,6 +373,7 @@ pub fn RuleRegistry::channel_count(Self) -> Int
 pub fn RuleRegistry::channel_names(Self) -> Array[String]
 pub fn RuleRegistry::get_revision(Self, String, Int) -> RuleRevision?
 pub fn RuleRegistry::list_revisions(Self, String) -> Array[RuleRevision]
+pub fn RuleRegistry::publish_json(Self, String, String, note? : String, published_by? : String) -> RegistryResult
 pub fn RuleRegistry::publish_rule(Self, String, Rule, schema_json? : String, note? : String, published_by? : String) -> RegistryResult
 pub fn RuleRegistry::revision_count(Self, String) -> Int
 

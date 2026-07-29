@@ -94,3 +94,82 @@ test "channel names preserve creation order" {
   ignore(registry.publish_rule("orders", object()))
   assert_eq(registry.channel_names(), ["users", "orders"])
 }
+
+///|
+test "dynamic JSON rule can be published" {
+  let registry = new_rule_registry()
+  let result = registry.publish_json("users", "{\"type\":\"string\"}")
+  assert_true(result.ok)
+  assert_eq(registry.active_version("users"), Some(1))
+}
+
+///|
+test "dynamic JSON syntax failure is reported" {
+  let registry = new_rule_registry()
+  let result = registry.publish_json("users", "{bad")
+  assert_false(result.ok)
+  assert_eq(result.code, "registry.schema.invalid")
+  assert_eq(registry.channel_count(), 0)
+}
+
+///|
+test "dynamic JSON semantic failure is reported" {
+  let registry = new_rule_registry()
+  let result = registry.publish_json("users", "{\"type\":\"unknown\"}")
+  assert_false(result.ok)
+  assert_eq(result.code, "registry.schema.invalid")
+}
+
+///|
+test "duplicate code rule is not appended" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  let result = registry.publish_rule("users", string())
+  assert_false(result.ok)
+  assert_eq(result.code, "registry.rule.duplicate")
+  assert_eq(registry.revision_count("users"), 1)
+}
+
+///|
+test "semantically duplicate JSON rule is not appended" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_json("users", "{\"type\":\"string\"}"))
+  let result = registry.publish_json("users", "{ \"type\" : \"string\" }")
+  assert_false(result.ok)
+  assert_eq(result.code, "registry.rule.duplicate")
+  assert_eq(registry.revision_count("users"), 1)
+}
+
+///|
+test "different dynamic rule creates next version" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_json("users", "{\"type\":\"string\"}"))
+  let result = registry.publish_json("users", "{\"type\":\"integer\"}")
+  assert_true(result.ok)
+  assert_eq(result.version, Some(2))
+}
+
+///|
+test "dynamic publish preserves author and note" {
+  let registry = new_rule_registry()
+  ignore(
+    registry.publish_json(
+      "users",
+      "{\"type\":\"string\"}",
+      note="API v1",
+      published_by="gale",
+    ),
+  )
+  let revision = registry.get_revision("users", 1).unwrap()
+  assert_eq(revision.note, "API v1")
+  assert_eq(revision.published_by, "gale")
+}
+
+///|
+test "invalid dynamic publish does not disturb active rule" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  ignore(registry.publish_json("users", "{\"type\":\"unknown\"}"))
+  assert_eq(registry.active_version("users"), Some(1))
+  assert_eq(registry.revision_count("users"), 1)
+}

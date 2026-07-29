@@ -151,6 +151,14 @@ pub fn RuleRegistry::publish_rule(
     )
   }
   let channel_index = registry_channel_index(self, normalized)
+  if channel_index >= 0 {
+    let revisions = self.channels[channel_index].revisions
+    if !revisions.is_empty() && revisions[revisions.length() - 1].rule == rule {
+      return registry_failure(
+        normalized, "registry.rule.duplicate", "rule is identical to the latest revision",
+      )
+    }
+  }
   let version = if channel_index < 0 {
     1
   } else {
@@ -179,4 +187,30 @@ pub fn RuleRegistry::publish_rule(
     self.channels[channel_index].revisions.push(revision)
   }
   registry_success(normalized, Some(version), "rule revision published")
+}
+
+///|
+/// Parse and publish a dynamic JSON rule document. Parser diagnostics are
+/// returned as registry errors so control planes do not need a second error
+/// channel for malformed submissions.
+pub fn RuleRegistry::publish_json(
+  self : RuleRegistry,
+  channel : String,
+  schema_json : String,
+  note? : String = "",
+  published_by? : String = "",
+) -> RegistryResult {
+  let parsed = parse_rule_document(schema_json)
+  match parsed.rule {
+    None => {
+      let message = if parsed.errors.is_empty() {
+        "rule document could not be parsed"
+      } else {
+        parsed.errors[0]
+      }
+      registry_failure(channel, "registry.schema.invalid", message)
+    }
+    Some(rule) =>
+      self.publish_rule(channel, rule, schema_json~, note~, published_by~)
+  }
 }
