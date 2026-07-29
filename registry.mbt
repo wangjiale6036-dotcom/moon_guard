@@ -214,3 +214,137 @@ pub fn RuleRegistry::publish_json(
       self.publish_rule(channel, rule, schema_json~, note~, published_by~)
   }
 }
+
+///|
+/// Atomically select one published revision for subsequent validations.
+pub fn RuleRegistry::activate(
+  self : RuleRegistry,
+  channel : String,
+  version : Int,
+) -> RegistryResult {
+  let channel_index = registry_channel_index(self, channel)
+  if channel_index < 0 {
+    return registry_failure(
+      channel, "registry.channel.missing", "channel does not exist",
+    )
+  }
+  let entry = self.channels[channel_index]
+  if revision_index(entry, version) < 0 {
+    return registry_failure(
+      channel, "registry.version.missing", "revision does not exist",
+    )
+  }
+  self.channels[channel_index] = { ..entry, active_version: Some(version) }
+  registry_success(channel, Some(version), "rule revision activated")
+}
+
+///|
+/// Move the active pointer to the immediately preceding revision.
+pub fn RuleRegistry::rollback(
+  self : RuleRegistry,
+  channel : String,
+) -> RegistryResult {
+  let channel_index = registry_channel_index(self, channel)
+  if channel_index < 0 {
+    return registry_failure(
+      channel, "registry.channel.missing", "channel does not exist",
+    )
+  }
+  let entry = self.channels[channel_index]
+  let active = match entry.active_version {
+    None =>
+      return registry_failure(
+        channel, "registry.active.missing", "channel has no active revision",
+      )
+    Some(version) => version
+  }
+  let mut candidate = 0
+  for revision in entry.revisions {
+    if revision.version < active && revision.version > candidate {
+      candidate = revision.version
+    }
+  }
+  if candidate == 0 {
+    return registry_failure(
+      channel, "registry.rollback.unavailable", "no earlier revision is available",
+    )
+  }
+  self.activate(channel, candidate)
+}
+
+///|
+/// Validate one parsed JSON value and record the active version used.
+pub fn RuleRegistry::validate_active(
+  self : RuleRegistry,
+  channel : String,
+  value : Json,
+  options? : ValidationOptions = default_validation_options(),
+) -> RegistryValidationResult {
+  match self.active_revision(channel) {
+    None => { found: false, channel, version: None, report: None }
+    Some(revision) =>
+      {
+        found: true,
+        channel,
+        version: Some(revision.version),
+        report: Some(validate(revision.rule, value, options~)),
+      }
+  }
+}
+
+///|
+pub fn RuleRegistry::validate_active_json(
+  self : RuleRegistry,
+  channel : String,
+  text : String,
+  options? : ValidationOptions = default_validation_options(),
+) -> RegistryValidationResult {
+  match self.active_revision(channel) {
+    None => { found: false, channel, version: None, report: None }
+    Some(revision) =>
+      {
+        found: true,
+        channel,
+        version: Some(revision.version),
+        report: Some(validate_json(revision.rule, text, options~)),
+      }
+  }
+}
+
+///|
+pub fn RuleRegistry::validate_active_json_array(
+  self : RuleRegistry,
+  channel : String,
+  text : String,
+  options? : ValidationOptions = default_validation_options(),
+) -> RegistryBatchResult {
+  match self.active_revision(channel) {
+    None => { found: false, channel, version: None, report: None }
+    Some(revision) =>
+      {
+        found: true,
+        channel,
+        version: Some(revision.version),
+        report: Some(validate_json_array(revision.rule, text, options~)),
+      }
+  }
+}
+
+///|
+pub fn RuleRegistry::validate_active_json_lines(
+  self : RuleRegistry,
+  channel : String,
+  text : String,
+  options? : ValidationOptions = default_validation_options(),
+) -> RegistryBatchResult {
+  match self.active_revision(channel) {
+    None => { found: false, channel, version: None, report: None }
+    Some(revision) =>
+      {
+        found: true,
+        channel,
+        version: Some(revision.version),
+        report: Some(validate_json_lines(revision.rule, text, options~)),
+      }
+  }
+}

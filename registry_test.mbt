@@ -173,3 +173,97 @@ test "invalid dynamic publish does not disturb active rule" {
   assert_eq(registry.active_version("users"), Some(1))
   assert_eq(registry.revision_count("users"), 1)
 }
+
+///|
+test "published revision can be activated" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  ignore(registry.publish_rule("users", integer()))
+  let result = registry.activate("users", 2)
+  assert_true(result.ok)
+  assert_eq(registry.active_version("users"), Some(2))
+}
+
+///|
+test "activation rejects missing channel" {
+  let result = new_rule_registry().activate("missing", 1)
+  assert_false(result.ok)
+  assert_eq(result.code, "registry.channel.missing")
+}
+
+///|
+test "activation rejects missing version" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  let result = registry.activate("users", 9)
+  assert_false(result.ok)
+  assert_eq(result.code, "registry.version.missing")
+}
+
+///|
+test "rollback selects previous revision" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  ignore(registry.publish_rule("users", integer()))
+  ignore(registry.activate("users", 2))
+  let result = registry.rollback("users")
+  assert_true(result.ok)
+  assert_eq(registry.active_version("users"), Some(1))
+}
+
+///|
+test "rollback reports unavailable history" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  let result = registry.rollback("users")
+  assert_false(result.ok)
+  assert_eq(result.code, "registry.rollback.unavailable")
+}
+
+///|
+test "active validation records version" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  let result = registry.validate_active("users", "ok".to_json())
+  assert_true(result.found)
+  assert_eq(result.version, Some(1))
+  assert_true(result.report.unwrap().valid)
+}
+
+///|
+test "activation changes validation behavior" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  ignore(registry.publish_rule("users", integer()))
+  assert_false(
+    registry.validate_active_json("users", "1").report.unwrap().valid,
+  )
+  ignore(registry.activate("users", 2))
+  assert_true(registry.validate_active_json("users", "1").report.unwrap().valid)
+}
+
+///|
+test "unknown active validation is explicit" {
+  let result = new_rule_registry().validate_active_json("missing", "1")
+  assert_false(result.found)
+  assert_true(result.report is None)
+}
+
+///|
+test "registry validates JSON array batch" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("numbers", integer()))
+  let result = registry.validate_active_json_array("numbers", "[1,2,\"x\"]")
+  assert_true(result.found)
+  assert_eq(result.report.unwrap().failed, 1)
+}
+
+///|
+test "registry validates JSON Lines batch" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("numbers", integer()))
+  let result = registry.validate_active_json_lines("numbers", "1\n2\n\"x\"")
+  assert_true(result.found)
+  assert_eq(result.report.unwrap().total, 3)
+  assert_eq(result.report.unwrap().failed, 1)
+}

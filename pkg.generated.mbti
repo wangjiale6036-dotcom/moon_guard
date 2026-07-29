@@ -312,12 +312,26 @@ pub(all) struct PropertyRule {
   description : String
 } derive(Eq, @debug.Debug)
 
+pub(all) struct RegistryBatchResult {
+  found : Bool
+  channel : String
+  version : Int?
+  report : BatchReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RegistryResult {
   ok : Bool
   code : String
   message : String
   channel : String
   version : Int?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RegistryValidationResult {
+  found : Bool
+  channel : String
+  version : Int?
+  report : ValidationReport?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum Rule {
@@ -367,6 +381,7 @@ pub(all) struct RuleParseResult {
 pub struct RuleRegistry {
   channels : Array[RuleChannel]
 }
+pub fn RuleRegistry::activate(Self, String, Int) -> RegistryResult
 pub fn RuleRegistry::active_revision(Self, String) -> RuleRevision?
 pub fn RuleRegistry::active_version(Self, String) -> Int?
 pub fn RuleRegistry::channel_count(Self) -> Int
@@ -376,6 +391,11 @@ pub fn RuleRegistry::list_revisions(Self, String) -> Array[RuleRevision]
 pub fn RuleRegistry::publish_json(Self, String, String, note? : String, published_by? : String) -> RegistryResult
 pub fn RuleRegistry::publish_rule(Self, String, Rule, schema_json? : String, note? : String, published_by? : String) -> RegistryResult
 pub fn RuleRegistry::revision_count(Self, String) -> Int
+pub fn RuleRegistry::rollback(Self, String) -> RegistryResult
+pub fn RuleRegistry::validate_active(Self, String, Json, options? : ValidationOptions) -> RegistryValidationResult
+pub fn RuleRegistry::validate_active_json(Self, String, String, options? : ValidationOptions) -> RegistryValidationResult
+pub fn RuleRegistry::validate_active_json_array(Self, String, String, options? : ValidationOptions) -> RegistryBatchResult
+pub fn RuleRegistry::validate_active_json_lines(Self, String, String, options? : ValidationOptions) -> RegistryBatchResult
 
 pub(all) struct RuleRevision {
   channel : String

@@ -278,3 +278,21 @@ pub(all) struct RegistryResult {
   channel : String
   version : Int?
 } derive(Eq, ToJson, FromJson, Debug)
+
+///|
+/// Validation result tied to the exact active revision that handled it.
+pub(all) struct RegistryValidationResult {
+  found : Bool
+  channel : String
+  version : Int?
+  report : ValidationReport?
+} derive(Eq, ToJson, FromJson, Debug)
+
+///|
+/// Batch counterpart of `RegistryValidationResult`.
+pub(all) struct RegistryBatchResult {
+  found : Bool
+  channel : String
+  version : Int?
+  report : BatchReport?
+} derive(Eq, ToJson, FromJson, Debug)
