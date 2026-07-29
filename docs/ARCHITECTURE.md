@@ -21,9 +21,13 @@ formats.mbt + json_path.mbt ─────> engine.mbt
                     ┌────────────────┼───────────────┐
                     ▼                ▼               ▼
               ValidationReport  rule_analysis   batch.mbt
-                    │
-                    ▼
-              JSON / CLI / API
+                    │                                │
+                    └───────────────┬────────────────┘
+                                    ▼
+                              registry.mbt
+                                    │
+                                    ▼
+                         JSON / CLI / API / manifest
 ```
 
 | 文件 | 职责 |
@@ -37,6 +41,7 @@ formats.mbt + json_path.mbt ─────> engine.mbt
 | `json_path.mbt` | JSON Pointer、点路径和值预览 |
 | `rule_analysis.mbt` | 静态分析、良构检查、轮廓生成和规则优化 |
 | `batch.mbt` | 批次、JSON 数组、JSON Lines 和错误直方图 |
+| `registry.mbt` | 版本发布、兼容性门禁、激活、回滚、校验和持久化 |
 | `samples.mbt` | 用户注册、订单、Webhook 三类完整规则示例 |
 
 ## 执行模型
@@ -51,6 +56,14 @@ formats.mbt + json_path.mbt ─────> engine.mbt
 - `include_warnings`：是否执行非阻塞警告规则。
 
 达到预算后报告的 `stats.truncated` 会被标记，不会把“不完整结果”伪装成完整结果。
+
+## 注册表发布模型
+
+注册表使用 channel 表示一个逻辑 API 契约，使用从 1 开始的顺序版本保存不可变规则。发布候选版本不会自动替换正在服务的版本，控制面必须显式调用 `activate`。`rollback` 只移动激活指针，不修改历史内容。
+
+`publish_json_checked` 在发布前使用候选规则执行全部兼容性样例；任一失败时不会写入版本。`manifest_json` 导出不包含后端特定数据，恢复时会重新解析每份规则，并同时验证格式版本、版本顺序和激活指针，因此无效文档不会产生部分注册表。
+
+该 MVP 采用进程内确定性数组存储，适合嵌入服务、CLI 和 Wasm 应用。后续网络化控制面可在保持现有发布语义的前提下替换存储层。
 
 ## 规则代数
 
