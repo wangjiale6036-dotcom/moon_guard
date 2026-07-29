@@ -296,3 +296,11 @@ pub(all) struct RegistryBatchResult {
   version : Int?
   report : BatchReport?
 } derive(Eq, ToJson, FromJson, Debug)
+
+///|
+/// Outcome of a candidate publication guarded by compatibility examples.
+pub(all) struct RegistryGateResult {
+  published : Bool
+  result : RegistryResult
+  compatibility : BatchReport?
+} derive(Eq, ToJson, FromJson, Debug)

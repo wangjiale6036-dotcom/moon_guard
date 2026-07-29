@@ -348,3 +348,52 @@ pub fn RuleRegistry::validate_active_json_lines(
       }
   }
 }
+
+///|
+/// Publish only when every supplied compatibility case satisfies the
+/// candidate. This gives CI and control planes an atomic test-and-publish
+/// primitive instead of requiring a race-prone validation step beforehand.
+pub fn RuleRegistry::publish_json_checked(
+  self : RuleRegistry,
+  channel : String,
+  schema_json : String,
+  cases : Array[ValidationCase],
+  note? : String = "",
+  published_by? : String = "",
+  options? : ValidationOptions = default_validation_options(),
+) -> RegistryGateResult {
+  let parsed = parse_rule_document(schema_json)
+  let candidate = match parsed.rule {
+    None => {
+      let message = if parsed.errors.is_empty() {
+        "rule document could not be parsed"
+      } else {
+        parsed.errors[0]
+      }
+      return {
+        published: false,
+        result: registry_failure(channel, "registry.schema.invalid", message),
+        compatibility: None,
+      }
+    }
+    Some(rule) => rule
+  }
+  let compatibility = validate_batch(candidate, cases, options~)
+  if !compatibility.valid {
+    return {
+      published: false,
+      result: registry_failure(
+        channel, "registry.gate.failed", "candidate rejected by compatibility cases",
+      ),
+      compatibility: Some(compatibility),
+    }
+  }
+  let result = self.publish_rule(
+    channel,
+    candidate,
+    schema_json~,
+    note~,
+    published_by~,
+  )
+  { published: result.ok, result, compatibility: Some(compatibility) }
+}

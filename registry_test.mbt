@@ -1,4 +1,11 @@
 ///|
+fn registry_json(text : String) -> Json {
+  @json.parse(text) catch {
+    _ => Json::null()
+  }
+}
+
+///|
 test "new registry is empty" {
   let registry = new_rule_registry()
   assert_eq(registry.channel_count(), 0)
@@ -252,7 +259,7 @@ test "unknown active validation is explicit" {
 ///|
 test "registry validates JSON array batch" {
   let registry = new_rule_registry()
-  ignore(registry.publish_rule("numbers", integer()))
+  ignore(registry.publish_json("numbers", "{\"type\":\"integer\"}"))
   let result = registry.validate_active_json_array("numbers", "[1,2,\"x\"]")
   assert_true(result.found)
   assert_eq(result.report.unwrap().failed, 1)
@@ -266,4 +273,110 @@ test "registry validates JSON Lines batch" {
   assert_true(result.found)
   assert_eq(result.report.unwrap().total, 3)
   assert_eq(result.report.unwrap().failed, 1)
+}
+
+///|
+test "checked publish accepts compatible examples" {
+  let registry = new_rule_registry()
+  let cases : Array[ValidationCase] = [
+    { id: "one", value: registry_json("1") },
+    { id: "two", value: registry_json("2") },
+  ]
+  let gate = registry.publish_json_checked(
+    "numbers", "{\"type\":\"integer\"}", cases,
+  )
+  assert_true(gate.published)
+  assert_eq(registry.revision_count("numbers"), 1)
+}
+
+///|
+test "checked publish rejects incompatible example" {
+  let registry = new_rule_registry()
+  let cases : Array[ValidationCase] = [{ id: "bad", value: "text".to_json() }]
+  let gate = registry.publish_json_checked(
+    "numbers", "{\"type\":\"integer\"}", cases,
+  )
+  assert_false(gate.published)
+  assert_eq(gate.result.code, "registry.gate.failed")
+  assert_eq(registry.channel_count(), 0)
+}
+
+///|
+test "checked publish returns per-case diagnostics" {
+  let registry = new_rule_registry()
+  let cases : Array[ValidationCase] = [
+    { id: "sample-42", value: "wrong".to_json() },
+  ]
+  let gate = registry.publish_json_checked(
+    "numbers", "{\"type\":\"integer\"}", cases,
+  )
+  let report = gate.compatibility.unwrap()
+  assert_eq(report.failed, 1)
+  assert_eq(report.cases[0].id, "sample-42")
+}
+
+///|
+test "checked publish reports schema failure before examples" {
+  let registry = new_rule_registry()
+  let gate = registry.publish_json_checked("numbers", "{bad", [
+    { id: "one", value: registry_json("1") },
+  ])
+  assert_false(gate.published)
+  assert_eq(gate.result.code, "registry.schema.invalid")
+  assert_true(gate.compatibility is None)
+}
+
+///|
+test "checked publish permits empty example set" {
+  let registry = new_rule_registry()
+  let cases : Array[ValidationCase] = []
+  let gate = registry.publish_json_checked(
+    "numbers", "{\"type\":\"integer\"}", cases,
+  )
+  assert_true(gate.published)
+  assert_eq(gate.compatibility.unwrap().total, 0)
+}
+
+///|
+test "checked second revision remains inactive" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("numbers", number()))
+  let gate = registry.publish_json_checked(
+    "numbers",
+    "{\"type\":\"integer\"}",
+    [{ id: "one", value: registry_json("1") }],
+  )
+  assert_true(gate.published)
+  assert_eq(gate.result.version, Some(2))
+  assert_eq(registry.active_version("numbers"), Some(1))
+}
+
+///|
+test "checked duplicate does not append revision" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_json("numbers", "{\"type\":\"integer\"}"))
+  let gate = registry.publish_json_checked(
+    "numbers",
+    "{\"type\":\"integer\"}",
+    [{ id: "one", value: registry_json("1") }],
+  )
+  assert_false(gate.published)
+  assert_eq(gate.result.code, "registry.rule.duplicate")
+  assert_eq(registry.revision_count("numbers"), 1)
+}
+
+///|
+test "checked publish keeps release metadata" {
+  let registry = new_rule_registry()
+  let gate = registry.publish_json_checked(
+    "numbers",
+    "{\"type\":\"integer\"}",
+    [{ id: "one", value: registry_json("1") }],
+    note="validated contract",
+    published_by="gale",
+  )
+  assert_true(gate.published)
+  let revision = registry.get_revision("numbers", 1).unwrap()
+  assert_eq(revision.note, "validated contract")
+  assert_eq(revision.published_by, "gale")
 }
