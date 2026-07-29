@@ -121,6 +121,8 @@ pub fn named(String, Rule, description? : String) -> Rule
 
 pub fn negative_number() -> Rule
 
+pub fn new_rule_registry() -> RuleRegistry
+
 pub fn new_validator(Rule, options? : ValidationOptions) -> Validator
 
 pub fn non_empty_list(Rule) -> Rule
@@ -310,6 +312,14 @@ pub(all) struct PropertyRule {
   description : String
 } derive(Eq, @debug.Debug)
 
+pub(all) struct RegistryResult {
+  ok : Bool
+  code : String
+  message : String
+  channel : String
+  version : Int?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) enum Rule {
   Accept
   Reject(String)
@@ -342,10 +352,37 @@ pub(all) struct RuleAnalysis {
   warnings : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RuleChannel {
+  name : String
+  active_version : Int?
+  revisions : Array[RuleRevision]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct RuleParseResult {
   rule : Rule?
   errors : Array[String]
   warnings : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub struct RuleRegistry {
+  channels : Array[RuleChannel]
+}
+pub fn RuleRegistry::active_revision(Self, String) -> RuleRevision?
+pub fn RuleRegistry::active_version(Self, String) -> Int?
+pub fn RuleRegistry::channel_count(Self) -> Int
+pub fn RuleRegistry::channel_names(Self) -> Array[String]
+pub fn RuleRegistry::get_revision(Self, String, Int) -> RuleRevision?
+pub fn RuleRegistry::list_revisions(Self, String) -> Array[RuleRevision]
+pub fn RuleRegistry::publish_rule(Self, String, Rule, schema_json? : String, note? : String, published_by? : String) -> RegistryResult
+pub fn RuleRegistry::revision_count(Self, String) -> Int
+
+pub(all) struct RuleRevision {
+  channel : String
+  version : Int
+  rule : Rule
+  schema_json : String
+  note : String
+  published_by : String
 } derive(Eq, @debug.Debug)
 
 pub(all) enum Severity {
