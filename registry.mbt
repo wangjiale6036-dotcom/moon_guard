@@ -397,3 +397,77 @@ pub fn RuleRegistry::publish_json_checked(
   )
   { published: result.ok, result, compatibility: Some(compatibility) }
 }
+
+///|
+/// Produce a deterministic, backend-independent persistence manifest.
+pub fn RuleRegistry::manifest(self : RuleRegistry) -> RegistryManifest {
+  let channels : Array[RegistryChannelInfo] = []
+  for channel in self.channels {
+    let revisions : Array[RegistryRevisionInfo] = []
+    for revision in channel.revisions {
+      revisions.push({
+        version: revision.version,
+        note: revision.note,
+        published_by: revision.published_by,
+        schema_json: revision.schema_json,
+      })
+    }
+    channels.push({
+      name: channel.name,
+      active_version: channel.active_version,
+      revisions,
+    })
+  }
+  { format_version: 1, channels }
+}
+
+///|
+pub fn RuleRegistry::manifest_json(
+  self : RuleRegistry,
+  indent? : Int = 2,
+) -> String {
+  self.manifest().to_json().stringify(indent~)
+}
+
+///|
+/// Restore a complete registry from a manifest. Loading is transactional: a
+/// malformed schema, non-sequential version or invalid active pointer rejects
+/// the whole document and does not expose a partially restored registry.
+pub fn rule_registry_from_manifest(text : String) -> RuleRegistry? {
+  let value = @json.parse(text) catch { _ => return None }
+  let manifest : RegistryManifest = @json.from_json(value) catch {
+    _ => return None
+  }
+  if manifest.format_version != 1 {
+    return None
+  }
+  let registry = new_rule_registry()
+  for channel in manifest.channels {
+    if channel.revisions.is_empty() {
+      return None
+    }
+    for index = 0; index < channel.revisions.length(); index = index + 1 {
+      let revision = channel.revisions[index]
+      if revision.version != index + 1 {
+        return None
+      }
+      let result = registry.publish_json(
+        channel.name,
+        revision.schema_json,
+        note=revision.note,
+        published_by=revision.published_by,
+      )
+      if !result.ok {
+        return None
+      }
+    }
+    let active = match channel.active_version {
+      None => return None
+      Some(version) => version
+    }
+    if !registry.activate(channel.name, active).ok {
+      return None
+    }
+  }
+  Some(registry)
+}

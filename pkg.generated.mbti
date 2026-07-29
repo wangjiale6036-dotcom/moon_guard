@@ -179,6 +179,8 @@ pub fn rule_node_count(Rule) -> Int
 
 pub fn rule_outline(Rule) -> String
 
+pub fn rule_registry_from_manifest(String) -> RuleRegistry?
+
 pub fn rule_round_trip(Rule) -> Rule?
 
 pub fn rule_to_json(Rule, indent? : Int) -> String
@@ -319,10 +321,21 @@ pub(all) struct RegistryBatchResult {
   report : BatchReport?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RegistryChannelInfo {
+  name : String
+  active_version : Int?
+  revisions : Array[RegistryRevisionInfo]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RegistryGateResult {
   published : Bool
   result : RegistryResult
   compatibility : BatchReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RegistryManifest {
+  format_version : Int
+  channels : Array[RegistryChannelInfo]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RegistryResult {
@@ -331,6 +344,13 @@ pub(all) struct RegistryResult {
   message : String
   channel : String
   version : Int?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RegistryRevisionInfo {
+  version : Int
+  note : String
+  published_by : String
+  schema_json : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RegistryValidationResult {
@@ -394,6 +414,8 @@ pub fn RuleRegistry::channel_count(Self) -> Int
 pub fn RuleRegistry::channel_names(Self) -> Array[String]
 pub fn RuleRegistry::get_revision(Self, String, Int) -> RuleRevision?
 pub fn RuleRegistry::list_revisions(Self, String) -> Array[RuleRevision]
+pub fn RuleRegistry::manifest(Self) -> RegistryManifest
+pub fn RuleRegistry::manifest_json(Self, indent? : Int) -> String
 pub fn RuleRegistry::publish_json(Self, String, String, note? : String, published_by? : String) -> RegistryResult
 pub fn RuleRegistry::publish_json_checked(Self, String, String, Array[ValidationCase], note? : String, published_by? : String, options? : ValidationOptions) -> RegistryGateResult
 pub fn RuleRegistry::publish_rule(Self, String, Rule, schema_json? : String, note? : String, published_by? : String) -> RegistryResult

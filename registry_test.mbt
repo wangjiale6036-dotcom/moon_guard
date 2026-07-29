@@ -380,3 +380,89 @@ test "checked publish keeps release metadata" {
   assert_eq(revision.note, "validated contract")
   assert_eq(revision.published_by, "gale")
 }
+
+///|
+test "empty registry manifest has format version" {
+  let manifest = new_rule_registry().manifest()
+  assert_eq(manifest.format_version, 1)
+  assert_eq(manifest.channels, [])
+}
+
+///|
+test "manifest retains revision metadata" {
+  let registry = new_rule_registry()
+  ignore(
+    registry.publish_json(
+      "users",
+      "{\"type\":\"string\"}",
+      note="first",
+      published_by="gale",
+    ),
+  )
+  let manifest = registry.manifest()
+  assert_eq(manifest.channels[0].name, "users")
+  assert_eq(manifest.channels[0].revisions[0].note, "first")
+  assert_eq(manifest.channels[0].revisions[0].published_by, "gale")
+}
+
+///|
+test "manifest JSON is deterministic" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_json("users", "{\"type\":\"string\"}"))
+  assert_eq(registry.manifest_json(), registry.manifest_json())
+}
+
+///|
+test "manifest round trip restores active version" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_json("users", "{\"type\":\"string\"}"))
+  ignore(registry.publish_json("users", "{\"type\":\"integer\"}"))
+  ignore(registry.activate("users", 2))
+  let restored = rule_registry_from_manifest(registry.manifest_json()).unwrap()
+  assert_eq(restored.channel_count(), 1)
+  assert_eq(restored.revision_count("users"), 2)
+  assert_eq(restored.active_version("users"), Some(2))
+}
+
+///|
+test "restored registry executes active rule" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_json("users", "{\"type\":\"string\"}"))
+  let restored = rule_registry_from_manifest(registry.manifest_json()).unwrap()
+  assert_true(
+    restored.validate_active_json("users", "\"ok\"").report.unwrap().valid,
+  )
+  assert_false(
+    restored.validate_active_json("users", "1").report.unwrap().valid,
+  )
+}
+
+///|
+test "invalid manifest syntax is rejected" {
+  assert_true(rule_registry_from_manifest("{bad") is None)
+}
+
+///|
+test "unknown manifest format is rejected" {
+  let text = "{\"format_version\":2,\"channels\":[]}"
+  assert_true(rule_registry_from_manifest(text) is None)
+}
+
+///|
+test "manifest with broken schema is rejected" {
+  let text =
+    #|{
+    #|  "format_version": 1,
+    #|  "channels": [{
+    #|    "name": "users",
+    #|    "active_version": 1,
+    #|    "revisions": [{
+    #|      "version": 1,
+    #|      "note": "",
+    #|      "published_by": "",
+    #|      "schema_json": "{bad"
+    #|    }]
+    #|  }]
+    #|}
+  assert_true(rule_registry_from_manifest(text) is None)
+}
