@@ -238,3 +238,94 @@ pub(all) struct IssueCount {
   code : String
   count : Int
 } derive(Eq, ToJson, FromJson, Debug)
+
+///|
+/// One immutable rule version stored by the MVP registry. The executable rule
+/// and its canonical JSON are kept together so callers can validate quickly
+/// while still exposing an auditable representation.
+pub(all) struct RuleRevision {
+  channel : String
+  version : Int
+  rule : Rule
+  schema_json : String
+  note : String
+  published_by : String
+} derive(Eq, Debug)
+
+///|
+/// All revisions for one logical API contract. `active_version` is separate
+/// from the append-only revision list so activation and rollback never rewrite
+/// historical rule content.
+pub(all) struct RuleChannel {
+  name : String
+  active_version : Int?
+  revisions : Array[RuleRevision]
+} derive(Eq, Debug)
+
+///|
+/// In-memory MVP registry. Arrays make ordering deterministic across every
+/// MoonBit backend and are sufficient for embedding in an API process.
+pub struct RuleRegistry {
+  channels : Array[RuleChannel]
+}
+
+///|
+/// Stable result returned by registry mutations.
+pub(all) struct RegistryResult {
+  ok : Bool
+  code : String
+  message : String
+  channel : String
+  version : Int?
+} derive(Eq, ToJson, FromJson, Debug)
+
+///|
+/// Validation result tied to the exact active revision that handled it.
+pub(all) struct RegistryValidationResult {
+  found : Bool
+  channel : String
+  version : Int?
+  report : ValidationReport?
+} derive(Eq, ToJson, FromJson, Debug)
+
+///|
+/// Batch counterpart of `RegistryValidationResult`.
+pub(all) struct RegistryBatchResult {
+  found : Bool
+  channel : String
+  version : Int?
+  report : BatchReport?
+} derive(Eq, ToJson, FromJson, Debug)
+
+///|
+/// Outcome of a candidate publication guarded by compatibility examples.
+pub(all) struct RegistryGateResult {
+  published : Bool
+  result : RegistryResult
+  compatibility : BatchReport?
+} derive(Eq, ToJson, FromJson, Debug)
+
+///|
+/// Serializable metadata for one revision. Executable rules are reconstructed
+/// from `schema_json` when a manifest is restored.
+pub(all) struct RegistryRevisionInfo {
+  version : Int
+  note : String
+  published_by : String
+  schema_json : String
+} derive(Eq, ToJson, FromJson, Debug)
+
+///|
+pub(all) struct RegistryChannelInfo {
+  name : String
+  active_version : Int?
+  revisions : Array[RegistryRevisionInfo]
+} derive(Eq, ToJson, FromJson, Debug)
+
+///|
+/// Portable registry persistence format. `format_version` is independent from
+/// individual rule versions and allows future migrations.
+pub(all) struct RegistryManifest {
+  format_version : Int
+  channels : Array[RegistryChannelInfo]
+} derive(Eq, ToJson, FromJson, Debug)

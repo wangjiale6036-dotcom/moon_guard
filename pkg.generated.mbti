@@ -121,6 +121,8 @@ pub fn named(String, Rule, description? : String) -> Rule
 
 pub fn negative_number() -> Rule
 
+pub fn new_rule_registry() -> RuleRegistry
+
 pub fn new_validator(Rule, options? : ValidationOptions) -> Validator
 
 pub fn non_empty_list(Rule) -> Rule
@@ -176,6 +178,8 @@ pub fn rule_is_well_formed(Rule) -> Bool
 pub fn rule_node_count(Rule) -> Int
 
 pub fn rule_outline(Rule) -> String
+
+pub fn rule_registry_from_manifest(String) -> RuleRegistry?
 
 pub fn rule_round_trip(Rule) -> Rule?
 
@@ -310,6 +314,52 @@ pub(all) struct PropertyRule {
   description : String
 } derive(Eq, @debug.Debug)
 
+pub(all) struct RegistryBatchResult {
+  found : Bool
+  channel : String
+  version : Int?
+  report : BatchReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RegistryChannelInfo {
+  name : String
+  active_version : Int?
+  revisions : Array[RegistryRevisionInfo]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RegistryGateResult {
+  published : Bool
+  result : RegistryResult
+  compatibility : BatchReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RegistryManifest {
+  format_version : Int
+  channels : Array[RegistryChannelInfo]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RegistryResult {
+  ok : Bool
+  code : String
+  message : String
+  channel : String
+  version : Int?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RegistryRevisionInfo {
+  version : Int
+  note : String
+  published_by : String
+  schema_json : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RegistryValidationResult {
+  found : Bool
+  channel : String
+  version : Int?
+  report : ValidationReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) enum Rule {
   Accept
   Reject(String)
@@ -342,10 +392,47 @@ pub(all) struct RuleAnalysis {
   warnings : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RuleChannel {
+  name : String
+  active_version : Int?
+  revisions : Array[RuleRevision]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct RuleParseResult {
   rule : Rule?
   errors : Array[String]
   warnings : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub struct RuleRegistry {
+  channels : Array[RuleChannel]
+}
+pub fn RuleRegistry::activate(Self, String, Int) -> RegistryResult
+pub fn RuleRegistry::active_revision(Self, String) -> RuleRevision?
+pub fn RuleRegistry::active_version(Self, String) -> Int?
+pub fn RuleRegistry::channel_count(Self) -> Int
+pub fn RuleRegistry::channel_names(Self) -> Array[String]
+pub fn RuleRegistry::get_revision(Self, String, Int) -> RuleRevision?
+pub fn RuleRegistry::list_revisions(Self, String) -> Array[RuleRevision]
+pub fn RuleRegistry::manifest(Self) -> RegistryManifest
+pub fn RuleRegistry::manifest_json(Self, indent? : Int) -> String
+pub fn RuleRegistry::publish_json(Self, String, String, note? : String, published_by? : String) -> RegistryResult
+pub fn RuleRegistry::publish_json_checked(Self, String, String, Array[ValidationCase], note? : String, published_by? : String, options? : ValidationOptions) -> RegistryGateResult
+pub fn RuleRegistry::publish_rule(Self, String, Rule, schema_json? : String, note? : String, published_by? : String) -> RegistryResult
+pub fn RuleRegistry::revision_count(Self, String) -> Int
+pub fn RuleRegistry::rollback(Self, String) -> RegistryResult
+pub fn RuleRegistry::validate_active(Self, String, Json, options? : ValidationOptions) -> RegistryValidationResult
+pub fn RuleRegistry::validate_active_json(Self, String, String, options? : ValidationOptions) -> RegistryValidationResult
+pub fn RuleRegistry::validate_active_json_array(Self, String, String, options? : ValidationOptions) -> RegistryBatchResult
+pub fn RuleRegistry::validate_active_json_lines(Self, String, String, options? : ValidationOptions) -> RegistryBatchResult
+
+pub(all) struct RuleRevision {
+  channel : String
+  version : Int
+  rule : Rule
+  schema_json : String
+  note : String
+  published_by : String
 } derive(Eq, @debug.Debug)
 
 pub(all) enum Severity {

@@ -6,10 +6,11 @@ MoonGuard 是一个使用 MoonBit 原生实现的 API 动态规则校验引擎�
 
 ## 项目状态
 
-- 4,500+ 行非测试 MoonBit 源码
-- 157 个自动化测试
+- 5,399 行非测试 MoonBit 源码
+- 200 个自动化测试
 - 4 种 MoonBit 后端持续集成
 - 18 种内置字符串格式
+- 可发布、激活、回滚和持久化的规则注册表 MVP
 - Apache-2.0 开源许可证
 
 ## 为什么需要 MoonGuard
@@ -34,6 +35,7 @@ ValidationReport ─── JSON Pointer / 点路径 / 统计信息
 | 模块 | 能力 |
 | --- | --- |
 | 动态规则 | 从 JSON 解析规则，提供明确的解析错误和警告 |
+| 版本治理 | 规则注册、兼容性门禁、激活、回滚、manifest 持久化 |
 | 类型与取值 | null、boolean、integer、number、string、array、object、const、enum |
 | 字符串 | 长度、前后缀、包含、通配符、白名单、黑名单、ASCII、非空白、格式 |
 | 数字 | 开闭区间、倍数、整数、正数、负数、非零 |
@@ -52,9 +54,10 @@ cd moon_guard
 moon test
 moon run cmd/main
 moon run cmd/schema
+moon run cmd/registry
 ```
 
-第一个命令运行代码式规则示例，第二个命令演示在程序运行时加载 JSON 规则。
+三个命令依次演示代码式规则、运行时 JSON 规则，以及“门禁发布 → 激活 → 校验 → manifest 导出 → 回滚”的完整 MVP 流程。
 
 ## MoonBit 规则 DSL
 
@@ -115,6 +118,39 @@ match rule_from_json(schema_text) {
 ```
 
 如需完整解析诊断，使用 `parse_rule_document`；它会返回规则、错误和非阻塞警告。
+
+## 版本化规则注册表 MVP
+
+规则注册表把动态校验从单次函数调用扩展为可运行的发布流程：
+
+- 同一业务 channel 保存不可变的顺序版本；
+- 首个版本自动激活，后续版本需要显式激活；
+- 重复规则不会产生无意义的新版本；
+- 兼容性样例全部通过后才会原子发布候选版本；
+- 每次校验结果记录实际使用的 channel 和版本；
+- 支持前一版本回滚、批量校验以及 JSON manifest 导出和恢复。
+
+```moonbit nocheck
+let registry = new_rule_registry()
+let gate = registry.publish_json_checked(
+  "accounts",
+  schema_text,
+  compatibility_cases,
+  note="require account age",
+  published_by="gale",
+)
+
+if gate.published {
+  ignore(registry.activate("accounts", gate.result.version.unwrap()))
+  let result = registry.validate_active_json("accounts", request_body)
+  println(result.to_json().stringify(indent=2))
+}
+
+let backup = registry.manifest_json()
+let restored = rule_registry_from_manifest(backup)
+```
+
+`cmd/registry` 提供上述链路的可运行演示。manifest 恢复采用事务语义：格式版本、规则 JSON、版本顺序或激活指针任一无效时，整个恢复操作失败，不暴露半成品注册表。
 
 ## 结构化错误
 
@@ -179,7 +215,7 @@ CI 对四个目标分别执行格式检查、类型检查、测试和构建。�
 
 ## 当前边界
 
-MoonGuard v0.1.0 聚焦 JSON/API 请求体和配置数据校验。它不是完整的 JSON Schema 2020-12 实现；当前不处理远程 `$ref`、正则表达式或 XML。显式的能力边界让运行成本和跨后端行为更容易预测。
+MoonGuard v0.2.0 聚焦 JSON/API 请求体、配置数据校验和进程内规则治理。它不是完整的 JSON Schema 2020-12 实现，也不是网络化配置中心；当前不处理远程 `$ref`、正则表达式或 XML。显式的能力边界让运行成本和跨后端行为更容易预测。
 
 ## 许可证
 
