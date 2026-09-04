@@ -13,6 +13,7 @@ pub(all) enum ShadowOutcome {
 ///|
 pub(all) struct ShadowCaseReport {
   id : String
+  value : Json
   outcome : ShadowOutcome
   baseline : ValidationReport
   candidate : ValidationReport

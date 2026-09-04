@@ -258,3 +258,56 @@ test "rollout assessment JSON exposes recommendation" {
     rollout_assessment_to_json(assessment).contains("PromoteCandidate"),
   )
 }
+
+///|
+test "safe promotion atomically activates candidate" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string_rule(min_length=Some(3))))
+  ignore(registry.publish_rule("users", string()))
+  let result = registry.promote_if_safe(
+    "users",
+    2,
+    [rollout_case("client", "hello".to_json())],
+    policy=rollout_policy(min_samples=1, max_relaxations=0),
+  )
+  assert_true(result.promoted)
+  assert_eq(registry.active_version("users"), Some(2))
+}
+
+///|
+test "unsafe promotion preserves active version" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  ignore(registry.publish_rule("users", string_rule(min_length=Some(3))))
+  let result = registry.promote_if_safe(
+    "users",
+    2,
+    [rollout_case("short", "x".to_json())],
+    policy=rollout_policy(min_samples=1),
+  )
+  assert_false(result.promoted)
+  assert_eq(result.result.code, "registry.rollout.regression")
+  assert_eq(registry.active_version("users"), Some(1))
+}
+
+///|
+test "promotion requires enough evidence" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  ignore(registry.publish_rule("users", nullable(string())))
+  let cases : Array[ValidationCase] = []
+  let result = registry.promote_if_safe("users", 2, cases)
+  assert_false(result.promoted)
+  assert_eq(result.result.code, "registry.rollout.insufficient")
+  assert_eq(registry.active_version("users"), Some(1))
+}
+
+///|
+test "promotion reports missing candidate" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  let cases : Array[ValidationCase] = []
+  let result = registry.promote_if_safe("users", 9, cases)
+  assert_false(result.promoted)
+  assert_eq(result.result.code, "registry.rollout.missing")
+}

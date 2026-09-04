@@ -162,3 +162,24 @@ test "shadow JSON is deterministic" {
   assert_eq(shadow_to_json(report), shadow_to_json(report))
   assert_true(shadow_to_json(report).contains("CandidateRegression"))
 }
+
+///|
+test "shadow regression witnesses preserve input" {
+  let report = shadow_validate(string(), string_rule(min_length=Some(3)), [
+    shadow_case("short", "\"x\""),
+  ])
+  let witnesses = regression_witnesses(report)
+  assert_eq(witnesses.length(), 1)
+  assert_eq(witnesses[0].id, "short")
+  assert_eq(witnesses[0].value, "x".to_json())
+}
+
+///|
+test "shadow relaxation witnesses preserve input" {
+  let report = shadow_validate(string_rule(min_length=Some(3)), string(), [
+    shadow_case("newly-valid", "\"x\""),
+  ])
+  let witnesses = relaxation_witnesses(report)
+  assert_eq(witnesses.length(), 1)
+  assert_eq(witnesses[0].id, "newly-valid")
+}

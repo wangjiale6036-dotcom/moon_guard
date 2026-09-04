@@ -51,3 +51,11 @@ pub(all) struct CanaryValidationResult {
   bucket : Int?
   report : ValidationReport?
 } derive(Eq, ToJson, FromJson, Debug)
+
+///|
+/// Atomic outcome of assessing and optionally activating a candidate.
+pub(all) struct RegistryPromotionResult {
+  promoted : Bool
+  result : RegistryResult
+  assessment : RolloutAssessment?
+} derive(Eq, ToJson, FromJson, Debug)

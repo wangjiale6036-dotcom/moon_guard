@@ -174,6 +174,67 @@ pub fn RuleRegistry::assess_candidate(
 }
 
 ///|
+/// Activate a candidate only when static and shadow evidence satisfy policy.
+/// Every other recommendation leaves the active pointer unchanged.
+pub fn RuleRegistry::promote_if_safe(
+  self : RuleRegistry,
+  channel : String,
+  candidate_version : Int,
+  cases : Array[ValidationCase],
+  policy? : RolloutPolicy = default_rollout_policy(),
+  options? : ValidationOptions = default_validation_options(),
+) -> RegistryPromotionResult {
+  let assessed = self.assess_candidate(
+    channel,
+    candidate_version,
+    cases,
+    policy~,
+    options~,
+  )
+  let assessment = match assessed.assessment {
+    None =>
+      return {
+        promoted: false,
+        result: registry_failure(
+          channel, "registry.rollout.missing", "baseline or candidate revision does not exist",
+        ),
+        assessment: None,
+      }
+    Some(value) => value
+  }
+  match assessment.recommendation {
+    PromoteCandidate => {
+      let result = self.activate(channel, candidate_version)
+      { promoted: result.ok, result, assessment: Some(assessment) }
+    }
+    InsufficientEvidence =>
+      {
+        promoted: false,
+        result: registry_failure(
+          channel, "registry.rollout.insufficient", "candidate has insufficient rollout evidence",
+        ),
+        assessment: Some(assessment),
+      }
+    RollbackCandidate =>
+      {
+        promoted: false,
+        result: registry_failure(
+          channel, "registry.rollout.regression", "candidate has observed compatibility regressions",
+        ),
+        assessment: Some(assessment),
+      }
+    HoldCandidate =>
+      {
+        promoted: false,
+        result: registry_failure(
+          channel, "registry.rollout.hold", "candidate does not satisfy rollout policy",
+        ),
+        assessment: Some(assessment),
+      }
+  }
+}
+
+///|
 /// Stable, allocation-free routing bucket. Modulo is applied at every step so
 /// the arithmetic stays bounded and matches across JS, Wasm and native targets.
 pub fn stable_rollout_bucket(key : String, buckets? : Int = 10000) -> Int {

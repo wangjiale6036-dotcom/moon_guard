@@ -81,6 +81,7 @@ pub fn shadow_validate(
     candidate_reports.push(next_report)
     case_reports.push({
       id: case.id,
+      value: case.value,
       outcome,
       baseline: old_report,
       candidate: next_report,
@@ -110,6 +111,32 @@ pub fn shadow_validate(
     },
     cases: case_reports,
   }
+}
+
+///|
+/// Extract concrete, machine-replayable counterexamples where the baseline
+/// accepted a payload and the candidate rejected it.
+pub fn regression_witnesses(report : ShadowReport) -> Array[ValidationCase] {
+  let result : Array[ValidationCase] = []
+  for case in report.cases {
+    if case.outcome == CandidateRegression {
+      result.push({ id: case.id, value: case.value })
+    }
+  }
+  result
+}
+
+///|
+/// Extract payloads newly accepted by the candidate. These are compatibility
+/// relaxations but may also represent a security-policy regression.
+pub fn relaxation_witnesses(report : ShadowReport) -> Array[ValidationCase] {
+  let result : Array[ValidationCase] = []
+  for case in report.cases {
+    if case.outcome == CandidateRelaxation {
+      result.push({ id: case.id, value: case.value })
+    }
+  }
+  result
 }
 
 ///|

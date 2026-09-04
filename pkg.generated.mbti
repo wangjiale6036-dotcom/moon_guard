@@ -177,7 +177,11 @@ pub fn property(String, Rule, required? : Bool, deprecated? : Bool, description?
 
 pub fn range(Double, Double) -> Rule
 
+pub fn regression_witnesses(ShadowReport) -> Array[ValidationCase]
+
 pub fn reject(message? : String) -> Rule
+
+pub fn relaxation_witnesses(ShadowReport) -> Array[ValidationCase]
 
 pub fn report_to_json(ValidationReport) -> String
 
@@ -400,6 +404,12 @@ pub(all) struct RegistryManifest {
   channels : Array[RegistryChannelInfo]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RegistryPromotionResult {
+  promoted : Bool
+  result : RegistryResult
+  assessment : RolloutAssessment?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RegistryResult {
   ok : Bool
   code : String
@@ -529,6 +539,7 @@ pub fn RuleRegistry::get_revision(Self, String, Int) -> RuleRevision?
 pub fn RuleRegistry::list_revisions(Self, String) -> Array[RuleRevision]
 pub fn RuleRegistry::manifest(Self) -> RegistryManifest
 pub fn RuleRegistry::manifest_json(Self, indent? : Int) -> String
+pub fn RuleRegistry::promote_if_safe(Self, String, Int, Array[ValidationCase], policy? : RolloutPolicy, options? : ValidationOptions) -> RegistryPromotionResult
 pub fn RuleRegistry::publish_json(Self, String, String, note? : String, published_by? : String) -> RegistryResult
 pub fn RuleRegistry::publish_json_checked(Self, String, String, Array[ValidationCase], note? : String, published_by? : String, options? : ValidationOptions) -> RegistryGateResult
 pub fn RuleRegistry::publish_rule(Self, String, Rule, schema_json? : String, note? : String, published_by? : String) -> RegistryResult
@@ -559,6 +570,7 @@ pub(all) enum Severity {
 
 pub(all) struct ShadowCaseReport {
   id : String
+  value : Json
   outcome : ShadowOutcome
   baseline : ValidationReport
   candidate : ValidationReport
