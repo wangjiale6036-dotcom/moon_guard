@@ -26,6 +26,12 @@ formats.mbt + json_path.mbt ─────> engine.mbt
                                     ▼
                               registry.mbt
                                     │
+              ┌─────────────────────┼──────────────────────┐
+              ▼                     ▼                      ▼
+       compatibility.mbt        shadow.mbt             rollout.mbt
+              │                     │                      │
+              └─────────────────────┴──────────────────────┘
+                                    │
                                     ▼
                          JSON / CLI / API / manifest
 ```
@@ -42,6 +48,9 @@ formats.mbt + json_path.mbt ─────> engine.mbt
 | `rule_analysis.mbt` | 静态分析、良构检查、轮廓生成和规则优化 |
 | `batch.mbt` | 批次、JSON 数组、JSON Lines 和错误直方图 |
 | `registry.mbt` | 版本发布、兼容性门禁、激活、回滚、校验和持久化 |
+| `compatibility.mbt` | 基线与候选规则的保守结构化差异预检 |
+| `shadow.mbt` | 调用方样本的双版本回放、行为分类、聚合指标和可选见证 |
+| `rollout.mbt` | 发布策略评估、预期基线晋级和确定性候选分桶 |
 | `samples.mbt` | 用户注册、订单、Webhook 三类完整规则示例 |
 
 ## 执行模型
@@ -64,6 +73,27 @@ formats.mbt + json_path.mbt ─────> engine.mbt
 `publish_json_checked` 在发布前使用候选规则执行全部兼容性样例；任一失败时不会写入版本。`manifest_json` 导出不包含后端特定数据，恢复时会重新解析每份规则，并同时验证格式版本、版本顺序和激活指针，因此无效文档不会产生部分注册表。
 
 该 MVP 采用进程内确定性数组存储，适合嵌入服务、CLI 和 Wasm 应用。后续网络化控制面可在保持现有发布语义的前提下替换存储层。
+
+## 契约演化与候选晋级
+
+v0.3 在版本注册表之上增加三层候选规则证据：
+
+```text
+基线规则 + 候选规则 ──> 结构化兼容性预检 ─┐
+调用方回放样本 ───────> 双版本影子分析 ───┼─> 发布策略评估
+                                               │
+                               保留 / 回退建议 / 安全晋级
+                                               │
+routing key ──> 非加密稳定分桶 ───────────> 选择校验规则版本
+```
+
+静态预检的方向是“候选规则是否继续接受基线规则曾接受的输入”。能够保守判断的变化会标记为 `BreakingImpact` 或 `RelaxingImpact`；`oneOf`、`noneOf`、条件谓词、复杂附加属性交互等不能安全证明的变化进入 `ReviewImpact`。核心不变量是：不能把未知关系静默当成兼容。预检分数仅用于排序和人工分诊，不表示兼容率或安全概率。
+
+影子分析对调用方提供的样本运行两个规则版本，并区分 `StableAccept`、`StableReject`、`CandidateRegression`、`CandidateRelaxation`、`DiagnosticShift`。它是无状态的离线/采样回放原语，不负责抓取生产流量。默认关闭值预览且不保存请求体；显式启用见证捕获后，也只保存发生接受行为变化的样本。
+
+`assess_rollout` 把静态报告和影子指标放入显式阈值策略，给出 `PromoteCandidate`、`HoldCandidate`、`RollbackCandidate` 或 `InsufficientEvidence`。`promote_if_safe` 只在建议为晋级、候选版本比基线新且激活指针仍指向被评估基线时调用注册表激活；其原子性限于当前同步、进程内注册表模型。
+
+`stable_rollout_bucket` 和 `validate_canary_json` 提供跨后端一致的 0–10000 基点规则版本选择。它们不具备密码学安全性，也不操作 API 网关、网络流量或部署平台。
 
 ## 规则代数
 

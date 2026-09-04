@@ -11,7 +11,7 @@
 
 name = "wangjiale6036-dotcom/moon_guard"
 
-version = "0.2.0"
+version = "0.3.0"
 
 readme = "README.mbt.md"
 
@@ -19,8 +19,8 @@ repository = "https://github.com/wangjiale6036-dotcom/moon_guard"
 
 license = "Apache-2.0"
 
-keywords = [ "validation", "api", "json", "schema", "rules" ]
+keywords = [ "validation", "api", "json", "compatibility", "canary" ]
 
 preferred_target = "wasm-gc"
 
-description = "A dynamic JSON and API rule validation engine written in MoonBit"
+description = "An explainable API contract evolution and dynamic rule validation engine for MoonBit"
