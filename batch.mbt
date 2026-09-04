@@ -15,9 +15,9 @@ pub fn validate_batch(
     } else {
       failed += 1
     }
-    reports.push({ id: case.id, report })
+    reports.push({ id: case.id, report, })
   }
-  { valid: failed == 0, total: cases.length(), passed, failed, cases: reports }
+  { valid: failed == 0, total: cases.length(), passed, failed, cases: reports, }
 }
 
 ///|
@@ -35,14 +35,16 @@ pub fn validate_json_array(
         total: 1,
         passed: 0,
         failed: 1,
-        cases: [{ id: "document", report: validate_json(rule, text, options~) }],
+        cases: [
+          { id: "document", report: validate_json(rule, text, options~), },
+        ],
       }
   }
   match value {
     Array(values) => {
       let cases : Array[ValidationCase] = []
       for index = 0; index < values.length(); index = index + 1 {
-        cases.push({ id: index.to_string(), value: values[index] })
+        cases.push({ id: index.to_string(), value: values[index], })
       }
       validate_batch(rule, cases, options~)
     }
@@ -53,7 +55,7 @@ pub fn validate_json_array(
         total: 1,
         passed: 0,
         failed: 1,
-        cases: [{ id: "document", report }],
+        cases: [{ id: "document", report, }],
       }
     }
   }
@@ -83,20 +85,20 @@ pub fn validate_json_lines(
     } else {
       failed += 1
     }
-    cases.push({ id: line_number.to_string(), report })
+    cases.push({ id: line_number.to_string(), report, })
   }
-  { valid: failed == 0, total: cases.length(), passed, failed, cases }
+  { valid: failed == 0, total: cases.length(), passed, failed, cases, }
 }
 
 ///|
 fn increment_issue_count(counts : Array[IssueCount], code : String) -> Unit {
   for index = 0; index < counts.length(); index = index + 1 {
     if counts[index].code == code {
-      counts[index] = { code, count: counts[index].count + 1 }
+      counts[index] = { code, count: counts[index].count + 1, }
       return
     }
   }
-  counts.push({ code, count: 1 })
+  counts.push({ code, count: 1, })
 }
 
 ///|
@@ -123,7 +125,7 @@ pub fn batch_issue_histogram(report : BatchReport) -> Array[IssueCount] {
 
 ///|
 pub fn batch_to_json(report : BatchReport) -> String {
-  report.to_json().stringify(indent=2)
+  ToJson::to_json(report).stringify(indent=2)
 }
 
 ///|

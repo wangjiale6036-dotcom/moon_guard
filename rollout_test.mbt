@@ -1,6 +1,6 @@
 ///|
 fn rollout_case(id : String, value : Json) -> ValidationCase {
-  { id, value }
+  { id, value, }
 }
 
 ///|

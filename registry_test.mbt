@@ -279,8 +279,8 @@ test "registry validates JSON Lines batch" {
 test "checked publish accepts compatible examples" {
   let registry = new_rule_registry()
   let cases : Array[ValidationCase] = [
-    { id: "one", value: registry_json("1") },
-    { id: "two", value: registry_json("2") },
+    { id: "one", value: registry_json("1"), },
+    { id: "two", value: registry_json("2"), },
   ]
   let gate = registry.publish_json_checked(
     "numbers", "{\"type\":\"integer\"}", cases,
@@ -292,7 +292,7 @@ test "checked publish accepts compatible examples" {
 ///|
 test "checked publish rejects incompatible example" {
   let registry = new_rule_registry()
-  let cases : Array[ValidationCase] = [{ id: "bad", value: "text".to_json() }]
+  let cases : Array[ValidationCase] = [{ id: "bad", value: "text".to_json(), }]
   let gate = registry.publish_json_checked(
     "numbers", "{\"type\":\"integer\"}", cases,
   )
@@ -305,7 +305,7 @@ test "checked publish rejects incompatible example" {
 test "checked publish returns per-case diagnostics" {
   let registry = new_rule_registry()
   let cases : Array[ValidationCase] = [
-    { id: "sample-42", value: "wrong".to_json() },
+    { id: "sample-42", value: "wrong".to_json(), },
   ]
   let gate = registry.publish_json_checked(
     "numbers", "{\"type\":\"integer\"}", cases,
@@ -319,7 +319,7 @@ test "checked publish returns per-case diagnostics" {
 test "checked publish reports schema failure before examples" {
   let registry = new_rule_registry()
   let gate = registry.publish_json_checked("numbers", "{bad", [
-    { id: "one", value: registry_json("1") },
+    { id: "one", value: registry_json("1"), },
   ])
   assert_false(gate.published)
   assert_eq(gate.result.code, "registry.schema.invalid")
@@ -344,7 +344,7 @@ test "checked second revision remains inactive" {
   let gate = registry.publish_json_checked(
     "numbers",
     "{\"type\":\"integer\"}",
-    [{ id: "one", value: registry_json("1") }],
+    [{ id: "one", value: registry_json("1"), }],
   )
   assert_true(gate.published)
   assert_eq(gate.result.version, Some(2))
@@ -358,7 +358,7 @@ test "checked duplicate does not append revision" {
   let gate = registry.publish_json_checked(
     "numbers",
     "{\"type\":\"integer\"}",
-    [{ id: "one", value: registry_json("1") }],
+    [{ id: "one", value: registry_json("1"), }],
   )
   assert_false(gate.published)
   assert_eq(gate.result.code, "registry.rule.duplicate")
@@ -371,7 +371,7 @@ test "checked publish keeps release metadata" {
   let gate = registry.publish_json_checked(
     "numbers",
     "{\"type\":\"integer\"}",
-    [{ id: "one", value: registry_json("1") }],
+    [{ id: "one", value: registry_json("1"), }],
     note="validated contract",
     published_by="gale",
   )

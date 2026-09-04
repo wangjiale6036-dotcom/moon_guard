@@ -7,7 +7,7 @@ fn shadow_json(text : String) -> Json {
 
 ///|
 fn shadow_case(id : String, text : String) -> ValidationCase {
-  { id, value: shadow_json(text) }
+  { id, value: shadow_json(text), }
 }
 
 ///|

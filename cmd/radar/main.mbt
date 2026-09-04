@@ -1,7 +1,7 @@
 ///|
 fn radar_case(id : String, text : String) -> @guard.ValidationCase {
   let value = @json.parse(text) catch { _ => Json::null() }
-  { id, value }
+  { id, value, }
 }
 
 ///|
@@ -69,13 +69,13 @@ fn main {
     published_by="radar-demo",
   )
   println("\n[1] Published revisions")
-  println(first.to_json().stringify())
-  println(second.to_json().stringify())
+  println(ToJson::to_json(first).stringify())
+  println(ToJson::to_json(second).stringify())
   println("active version: \{version_text(registry.active_version(channel))}")
 
   println("\n[2] Static compare_with_active")
   let static_result = registry.compare_with_active(channel, 2)
-  println(static_result.to_json().stringify(indent=2))
+  println(ToJson::to_json(static_result).stringify(indent=2))
 
   let callers : Array[@guard.ValidationCase] = [
     radar_case(
@@ -108,7 +108,7 @@ fn main {
   match shadow_result.report {
     None => println("shadow replay unavailable")
     Some(shadow_report) => {
-      println(shadow_report.metrics.to_json().stringify(indent=2))
+      println(ToJson::to_json(shadow_report.metrics).stringify(indent=2))
       print_regression_witnesses(shadow_report)
 
       println("\n[4] Rollout assessment")
@@ -124,7 +124,7 @@ fn main {
       let before = registry.active_version(channel)
       let promotion = registry.promote_if_safe(channel, 2, callers, policy~)
       let after = registry.active_version(channel)
-      println(promotion.to_json().stringify(indent=2))
+      println(ToJson::to_json(promotion).stringify(indent=2))
       println(
         "active version before=\{version_text(before)}, after=\{version_text(after)} (candidate blocked)",
       )

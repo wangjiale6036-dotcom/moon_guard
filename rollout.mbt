@@ -138,7 +138,7 @@ pub fn assess_rollout(
 
 ///|
 pub fn rollout_assessment_to_json(report : RolloutAssessment) -> String {
-  report.to_json().stringify(indent=2)
+  ToJson::to_json(report).stringify(indent=2)
 }
 
 ///|

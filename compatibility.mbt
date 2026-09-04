@@ -1292,7 +1292,7 @@ pub fn compare_rules(previous : Rule, candidate : Rule) -> CompatibilityReport {
 
 ///|
 pub fn compatibility_to_json(report : CompatibilityReport) -> String {
-  report.to_json().stringify(indent=2)
+  ToJson::to_json(report).stringify(indent=2)
 }
 
 ///|
@@ -1314,9 +1314,9 @@ pub fn compare_rule_json(
   match (baseline.rule, candidate.rule) {
     (Some(previous), Some(next)) => {
       let report = compare_rules(previous, next)
-      { ok: errors.is_empty(), errors, report: Some(report) }
+      { ok: errors.is_empty(), errors, report: Some(report), }
     }
-    _ => { ok: false, errors, report: None }
+    _ => { ok: false, errors, report: None, }
   }
 }
 

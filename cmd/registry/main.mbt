@@ -33,7 +33,7 @@ fn main {
     note="initial account contract",
     published_by="gale",
   )
-  println("publish v1: \{first.result.to_json().stringify()}")
+  println("publish v1: \{ToJson::to_json(first.result).stringify()}")
 
   let v2 =
     #|{
@@ -52,14 +52,16 @@ fn main {
     note="require minimum account age",
     published_by="gale",
   )
-  println("publish v2: \{second.to_json().stringify()}")
+  println("publish v2: \{ToJson::to_json(second).stringify()}")
   let activated = registry.activate("accounts", 2)
-  println("activate v2: \{activated.to_json().stringify()}")
+  println("activate v2: \{ToJson::to_json(activated).stringify()}")
 
   let request = "{\"email\":\"gale@example.com\",\"age\":20}"
   let validated = registry.validate_active_json("accounts", request)
-  println("active validation: \{validated.to_json().stringify(indent=2)}")
+  println(
+    "active validation: \{ToJson::to_json(validated).stringify(indent=2)}",
+  )
   println("manifest: \{registry.manifest_json()}")
   let rolled_back = registry.rollback("accounts")
-  println("rollback: \{rolled_back.to_json().stringify()}")
+  println("rollback: \{ToJson::to_json(rolled_back).stringify()}")
 }

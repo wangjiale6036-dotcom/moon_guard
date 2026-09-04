@@ -138,7 +138,7 @@ pub fn regression_witnesses(report : ShadowReport) -> Array[ValidationCase] {
       match case.witness_json {
         Some(text) => {
           let value = @json.parse(text) catch { _ => continue }
-          result.push({ id: case.id, value })
+          result.push({ id: case.id, value, })
         }
         None => ()
       }
@@ -157,7 +157,7 @@ pub fn relaxation_witnesses(report : ShadowReport) -> Array[ValidationCase] {
       match case.witness_json {
         Some(text) => {
           let value = @json.parse(text) catch { _ => continue }
-          result.push({ id: case.id, value })
+          result.push({ id: case.id, value, })
         }
         None => ()
       }
@@ -168,7 +168,7 @@ pub fn relaxation_witnesses(report : ShadowReport) -> Array[ValidationCase] {
 
 ///|
 pub fn shadow_to_json(report : ShadowReport) -> String {
-  report.to_json().stringify(indent=2)
+  ToJson::to_json(report).stringify(indent=2)
 }
 
 ///|
