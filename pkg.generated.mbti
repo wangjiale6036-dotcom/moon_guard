@@ -31,6 +31,12 @@ pub fn boolean() -> Rule
 
 pub fn child_paths(Json, path? : String, style? : String) -> Array[String]
 
+pub fn compare_rule_json(String, String) -> CompatibilityParseResult
+
+pub fn compare_rules(Rule, Rule) -> CompatibilityReport
+
+pub fn compatibility_to_json(CompatibilityReport) -> String
+
 pub fn default_array_policy() -> ArrayPolicy
 
 pub fn default_number_policy() -> NumberPolicy
@@ -260,6 +266,27 @@ pub(all) struct CaseReport {
   report : ValidationReport
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) enum ChangeImpact {
+  BreakingImpact
+  RelaxingImpact
+  ReviewImpact
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CompatibilityParseResult {
+  ok : Bool
+  errors : Array[String]
+  report : CompatibilityReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CompatibilityReport {
+  backward_compatible : Bool
+  score : Int
+  breaking_count : Int
+  relaxing_count : Int
+  review_count : Int
+  changes : Array[RuleChange]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct IssueCount {
   code : String
   count : Int
@@ -327,6 +354,14 @@ pub(all) struct RegistryChannelInfo {
   revisions : Array[RegistryRevisionInfo]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RegistryCompatibilityResult {
+  found : Bool
+  channel : String
+  baseline_version : Int?
+  candidate_version : Int?
+  report : CompatibilityReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RegistryGateResult {
   published : Bool
   result : RegistryResult
@@ -392,6 +427,13 @@ pub(all) struct RuleAnalysis {
   warnings : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RuleChange {
+  path : String
+  keyword : String
+  impact : ChangeImpact
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RuleChannel {
   name : String
   active_version : Int?
@@ -412,6 +454,8 @@ pub fn RuleRegistry::active_revision(Self, String) -> RuleRevision?
 pub fn RuleRegistry::active_version(Self, String) -> Int?
 pub fn RuleRegistry::channel_count(Self) -> Int
 pub fn RuleRegistry::channel_names(Self) -> Array[String]
+pub fn RuleRegistry::compare_versions(Self, String, Int, Int) -> RegistryCompatibilityResult
+pub fn RuleRegistry::compare_with_active(Self, String, Int) -> RegistryCompatibilityResult
 pub fn RuleRegistry::get_revision(Self, String, Int) -> RuleRevision?
 pub fn RuleRegistry::list_revisions(Self, String) -> Array[RuleRevision]
 pub fn RuleRegistry::manifest(Self) -> RegistryManifest
