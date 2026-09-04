@@ -14,6 +14,7 @@ pub(all) struct RolloutPolicy {
   min_samples : Int
   max_regressions : Int
   max_regression_basis_points : Int
+  max_static_relaxations : Int
   max_relaxations : Int
   max_diagnostic_shifts : Int
   max_truncated_cases : Int
@@ -56,6 +57,8 @@ pub(all) struct CanaryValidationResult {
 /// Atomic outcome of assessing and optionally activating a candidate.
 pub(all) struct RegistryPromotionResult {
   promoted : Bool
+  baseline_version : Int?
+  candidate_version : Int?
   result : RegistryResult
   assessment : RolloutAssessment?
 } derive(Eq, ToJson, FromJson, Debug)

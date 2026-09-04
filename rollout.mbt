@@ -6,6 +6,7 @@ pub fn default_rollout_policy() -> RolloutPolicy {
     min_samples: 100,
     max_regressions: 0,
     max_regression_basis_points: 0,
+    max_static_relaxations: 0,
     max_relaxations: 0,
     max_diagnostic_shifts: 0,
     max_truncated_cases: 0,
@@ -19,6 +20,7 @@ pub fn rollout_policy(
   min_samples? : Int = 100,
   max_regressions? : Int = 0,
   max_regression_basis_points? : Int = 0,
+  max_static_relaxations? : Int = 0,
   max_relaxations? : Int = 0,
   max_diagnostic_shifts? : Int = 0,
   max_truncated_cases? : Int = 0,
@@ -29,6 +31,7 @@ pub fn rollout_policy(
     min_samples: min_samples.max(0),
     max_regressions: max_regressions.max(0),
     max_regression_basis_points: max_regression_basis_points.max(0).min(10000),
+    max_static_relaxations: max_static_relaxations.max(0),
     max_relaxations: max_relaxations.max(0),
     max_diagnostic_shifts: max_diagnostic_shifts.max(0),
     max_truncated_cases: max_truncated_cases.max(0),
@@ -48,17 +51,6 @@ pub fn assess_rollout(
 ) -> RolloutAssessment {
   let reasons : Array[String] = []
   let metrics = shadow_report.metrics
-  if metrics.total < policy.min_samples {
-    reasons.push(
-      "sample count \{metrics.total} is below required \{policy.min_samples}",
-    )
-    return {
-      recommendation: InsufficientEvidence,
-      reasons,
-      static_report,
-      shadow_metrics: metrics,
-    }
-  }
   if metrics.regressions > policy.max_regressions {
     reasons.push(
       "candidate regressions \{metrics.regressions} exceed limit \{policy.max_regressions}",
@@ -77,6 +69,17 @@ pub fn assess_rollout(
       shadow_metrics: metrics,
     }
   }
+  if metrics.total < policy.min_samples {
+    reasons.push(
+      "sample count \{metrics.total} is below required \{policy.min_samples}",
+    )
+    return {
+      recommendation: InsufficientEvidence,
+      reasons,
+      static_report,
+      shadow_metrics: metrics,
+    }
+  }
   match static_report {
     Some(report) => {
       if policy.require_static_compatibility && report.breaking_count > 0 {
@@ -87,6 +90,11 @@ pub fn assess_rollout(
       if !policy.allow_static_review && report.review_count > 0 {
         reasons.push(
           "static radar found \{report.review_count} change(s) requiring review",
+        )
+      }
+      if report.relaxing_count > policy.max_static_relaxations {
+        reasons.push(
+          "static relaxations \{report.relaxing_count} exceed limit \{policy.max_static_relaxations}",
         )
       }
     }
@@ -140,11 +148,25 @@ pub fn RuleRegistry::assess_candidate(
   candidate_version : Int,
   cases : Array[ValidationCase],
   policy? : RolloutPolicy = default_rollout_policy(),
-  options? : ValidationOptions = default_validation_options(),
+  options? : ValidationOptions = default_shadow_options(),
 ) -> RegistryRolloutAssessment {
-  let static_result = self.compare_with_active(channel, candidate_version)
-  let shadow_result = self.shadow_with_active(
+  let baseline_version = match self.active_version(channel) {
+    Some(value) => value
+    None =>
+      return {
+        found: false,
+        channel,
+        baseline_version: None,
+        candidate_version: None,
+        assessment: None,
+      }
+  }
+  let static_result = self.compare_versions(
+    channel, baseline_version, candidate_version,
+  )
+  let shadow_result = self.shadow_versions(
     channel,
+    baseline_version,
     candidate_version,
     cases,
     options~,
@@ -161,7 +183,7 @@ pub fn RuleRegistry::assess_candidate(
   {
     found: true,
     channel,
-    baseline_version: static_result.baseline_version,
+    baseline_version: Some(baseline_version),
     candidate_version: Some(candidate_version),
     assessment: Some(
       assess_rollout(
@@ -182,7 +204,7 @@ pub fn RuleRegistry::promote_if_safe(
   candidate_version : Int,
   cases : Array[ValidationCase],
   policy? : RolloutPolicy = default_rollout_policy(),
-  options? : ValidationOptions = default_validation_options(),
+  options? : ValidationOptions = default_shadow_options(),
 ) -> RegistryPromotionResult {
   let assessed = self.assess_candidate(
     channel,
@@ -195,6 +217,8 @@ pub fn RuleRegistry::promote_if_safe(
     None =>
       return {
         promoted: false,
+        baseline_version: assessed.baseline_version,
+        candidate_version: Some(candidate_version),
         result: registry_failure(
           channel, "registry.rollout.missing", "baseline or candidate revision does not exist",
         ),
@@ -202,14 +226,45 @@ pub fn RuleRegistry::promote_if_safe(
       }
     Some(value) => value
   }
+  let baseline_version = assessed.baseline_version.unwrap()
+  if candidate_version <= baseline_version {
+    return {
+      promoted: false,
+      baseline_version: Some(baseline_version),
+      candidate_version: Some(candidate_version),
+      result: registry_failure(
+        channel, "registry.rollout.invalid_candidate", "candidate version must be newer than the active baseline",
+      ),
+      assessment: Some(assessment),
+    }
+  }
   match assessment.recommendation {
     PromoteCandidate => {
+      if self.active_version(channel) != Some(baseline_version) {
+        return {
+          promoted: false,
+          baseline_version: Some(baseline_version),
+          candidate_version: Some(candidate_version),
+          result: registry_failure(
+            channel, "registry.rollout.conflict", "active baseline changed after candidate assessment",
+          ),
+          assessment: Some(assessment),
+        }
+      }
       let result = self.activate(channel, candidate_version)
-      { promoted: result.ok, result, assessment: Some(assessment) }
+      {
+        promoted: result.ok,
+        baseline_version: Some(baseline_version),
+        candidate_version: Some(candidate_version),
+        result,
+        assessment: Some(assessment),
+      }
     }
     InsufficientEvidence =>
       {
         promoted: false,
+        baseline_version: Some(baseline_version),
+        candidate_version: Some(candidate_version),
         result: registry_failure(
           channel, "registry.rollout.insufficient", "candidate has insufficient rollout evidence",
         ),
@@ -218,6 +273,8 @@ pub fn RuleRegistry::promote_if_safe(
     RollbackCandidate =>
       {
         promoted: false,
+        baseline_version: Some(baseline_version),
+        candidate_version: Some(candidate_version),
         result: registry_failure(
           channel, "registry.rollout.regression", "candidate has observed compatibility regressions",
         ),
@@ -226,6 +283,8 @@ pub fn RuleRegistry::promote_if_safe(
     HoldCandidate =>
       {
         promoted: false,
+        baseline_version: Some(baseline_version),
+        candidate_version: Some(candidate_version),
         result: registry_failure(
           channel, "registry.rollout.hold", "candidate does not satisfy rollout policy",
         ),

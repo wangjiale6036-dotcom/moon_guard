@@ -13,6 +13,13 @@ fn compatibility_has(
 }
 
 ///|
+fn compatibility_json(text : String) -> Json {
+  @json.parse(text) catch {
+    _ => Json::null()
+  }
+}
+
+///|
 test "identical rules are fully compatible" {
   let report = compare_rules(sample_user_rule(), sample_user_rule())
   assert_true(report.backward_compatible)
@@ -107,6 +114,28 @@ test "adding allowed string is relaxing" {
     string_rule(allowed=["user", "admin"]),
   )
   assert_true(compatibility_has(report, "allowed", RelaxingImpact))
+}
+
+///|
+test "enabling a previously disabled allow-list is breaking" {
+  let report = compare_rules(
+    string_rule(allowed=[]),
+    string_rule(allowed=["user"]),
+  )
+  assert_true(compatibility_has(report, "allowed", BreakingImpact))
+  assert_false(report.backward_compatible)
+  assert_true(validate(string_rule(allowed=[]), "guest".to_json()).valid)
+  assert_false(validate(string_rule(allowed=["user"]), "guest".to_json()).valid)
+}
+
+///|
+test "disabling an allow-list is relaxing" {
+  let report = compare_rules(
+    string_rule(allowed=["user"]),
+    string_rule(allowed=[]),
+  )
+  assert_true(compatibility_has(report, "allowed", RelaxingImpact))
+  assert_true(report.backward_compatible)
 }
 
 ///|
@@ -300,6 +329,92 @@ test "adding all-of branch is breaking" {
 test "adding any-of branch is relaxing" {
   let report = compare_rules(any_of([string()]), any_of([string(), integer()]))
   assert_true(compatibility_has(report, "anyOf", RelaxingImpact))
+}
+
+///|
+test "changing one-of alternatives requires review" {
+  let baseline = exactly_one_of([string(), integer()])
+  let candidate = exactly_one_of([string()])
+  let report = compare_rules(baseline, candidate)
+  assert_true(compatibility_has(report, "oneOf", ReviewImpact))
+  assert_false(report.backward_compatible)
+  assert_true(validate(baseline, (1).to_json()).valid)
+  assert_false(validate(candidate, (1).to_json()).valid)
+}
+
+///|
+test "changing none-of alternatives requires review" {
+  let baseline = none_of([string_rule(min_length=Some(5))])
+  let candidate = none_of([string_rule(min_length=Some(3))])
+  let report = compare_rules(baseline, candidate)
+  assert_true(compatibility_has(report, "noneOf", ReviewImpact))
+  assert_false(report.backward_compatible)
+  assert_true(validate(baseline, "abc".to_json()).valid)
+  assert_false(validate(candidate, "abc".to_json()).valid)
+}
+
+///|
+test "prefix item length change with fallback items requires review" {
+  let baseline = array_rule(prefix_items=[integer()], items=Some(string()))
+  let candidate = array_rule(prefix_items=[], items=Some(string()))
+  let report = compare_rules(baseline, candidate)
+  assert_true(compatibility_has(report, "prefixItems", ReviewImpact))
+  assert_true(validate(baseline, compatibility_json("[1]")).valid)
+  assert_false(validate(candidate, compatibility_json("[1]")).valid)
+}
+
+///|
+test "declaring a typed additional property requires review" {
+  let additional = Some(string())
+  let baseline = object_rule(allow_additional=false, additional_rule=additional)
+  let candidate = object_rule(
+    properties=[optional_property("x", integer())],
+    allow_additional=false,
+    additional_rule=additional,
+  )
+  let report = compare_rules(baseline, candidate)
+  let witness = compatibility_json("{\"x\":\"ok\"}")
+  assert_true(compatibility_has(report, "properties", ReviewImpact))
+  assert_true(validate(baseline, witness).valid)
+  assert_false(validate(candidate, witness).valid)
+}
+
+///|
+test "additional allow flag is metadata when a typed rule exists" {
+  let baseline = object_rule(
+    allow_additional=false,
+    additional_rule=Some(string()),
+  )
+  let candidate = object_rule(
+    allow_additional=true,
+    additional_rule=Some(string()),
+  )
+  let report = compare_rules(baseline, candidate)
+  assert_true(report.backward_compatible)
+  assert_eq(report.changes.length(), 0)
+}
+
+///|
+test "equivalent const and singleton enum have no semantic change" {
+  let from_const = compare_rules(
+    equals("x".to_json()),
+    one_of_values(["x".to_json()]),
+  )
+  let from_enum = compare_rules(
+    one_of_values(["x".to_json()]),
+    equals("x".to_json()),
+  )
+  assert_eq(from_const.changes.length(), 0)
+  assert_eq(from_enum.changes.length(), 0)
+}
+
+///|
+test "changing multiple-of requires review" {
+  let report = compare_rules(
+    number_rule(multiple_of=Some(2.0)),
+    number_rule(multiple_of=Some(3.0)),
+  )
+  assert_true(compatibility_has(report, "multipleOf", ReviewImpact))
 }
 
 ///|

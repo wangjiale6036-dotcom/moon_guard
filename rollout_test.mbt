@@ -146,6 +146,7 @@ test "diagnostic drift holds candidate" {
     policy=rollout_policy(
       min_samples=1,
       require_static_compatibility=false,
+      max_static_relaxations=1,
       max_relaxations=1,
     ),
   )
@@ -262,15 +263,48 @@ test "rollout assessment JSON exposes recommendation" {
 ///|
 test "safe promotion atomically activates candidate" {
   let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  ignore(registry.publish_rule("users", named("candidate", string())))
+  let result = registry.promote_if_safe(
+    "users",
+    2,
+    [rollout_case("client", "hello".to_json())],
+    policy=rollout_policy(min_samples=1),
+  )
+  assert_true(result.promoted)
+  assert_eq(registry.active_version("users"), Some(2))
+}
+
+///|
+test "static relaxation is held when replay misses the relaxed boundary" {
+  let registry = new_rule_registry()
   ignore(registry.publish_rule("users", string_rule(min_length=Some(3))))
   ignore(registry.publish_rule("users", string()))
   let result = registry.promote_if_safe(
     "users",
     2,
-    [rollout_case("client", "hello".to_json())],
-    policy=rollout_policy(min_samples=1, max_relaxations=0),
+    [rollout_case("stable", "hello".to_json())],
+    policy=rollout_policy(min_samples=1),
+  )
+  assert_false(result.promoted)
+  assert_eq(result.result.code, "registry.rollout.hold")
+  assert_eq(registry.active_version("users"), Some(1))
+}
+
+///|
+test "policy can explicitly allow one static relaxation" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string_rule(min_length=Some(3))))
+  ignore(registry.publish_rule("users", string()))
+  let result = registry.promote_if_safe(
+    "users",
+    2,
+    [rollout_case("stable", "hello".to_json())],
+    policy=rollout_policy(min_samples=1, max_static_relaxations=1),
   )
   assert_true(result.promoted)
+  assert_eq(result.baseline_version, Some(1))
+  assert_eq(result.candidate_version, Some(2))
   assert_eq(registry.active_version("users"), Some(2))
 }
 
@@ -310,4 +344,41 @@ test "promotion reports missing candidate" {
   let result = registry.promote_if_safe("users", 9, cases)
   assert_false(result.promoted)
   assert_eq(result.result.code, "registry.rollout.missing")
+}
+
+///|
+test "promotion rejects active and older candidate versions" {
+  let registry = new_rule_registry()
+  ignore(registry.publish_rule("users", string()))
+  ignore(registry.publish_rule("users", named("candidate", string())))
+  ignore(registry.activate("users", 2))
+  let cases = [rollout_case("stable", "hello".to_json())]
+  let same = registry.promote_if_safe(
+    "users",
+    2,
+    cases,
+    policy=rollout_policy(min_samples=1),
+  )
+  let older = registry.promote_if_safe(
+    "users",
+    1,
+    cases,
+    policy=rollout_policy(min_samples=1),
+  )
+  assert_eq(same.result.code, "registry.rollout.invalid_candidate")
+  assert_eq(older.result.code, "registry.rollout.invalid_candidate")
+  assert_eq(registry.active_version("users"), Some(2))
+}
+
+///|
+test "observed regression outranks insufficient sample count" {
+  let shadow = shadow_validate(string(), string_rule(min_length=Some(3)), [
+    rollout_case("regression", "x".to_json()),
+  ])
+  let assessment = assess_rollout(
+    Some(compare_rules(string(), string_rule(min_length=Some(3)))),
+    shadow,
+    policy=rollout_policy(min_samples=100),
+  )
+  assert_eq(assessment.recommendation, RollbackCandidate)
 }

@@ -13,7 +13,9 @@ pub(all) enum ShadowOutcome {
 ///|
 pub(all) struct ShadowCaseReport {
   id : String
-  value : Json
+  /// Canonical payload snapshot for behavior deltas only. Redacted by default
+  /// and populated only when callers explicitly enable witness capture.
+  witness_json : String?
   outcome : ShadowOutcome
   baseline : ValidationReport
   candidate : ValidationReport

@@ -47,6 +47,8 @@ pub fn default_object_policy() -> ObjectPolicy
 
 pub fn default_rollout_policy() -> RolloutPolicy
 
+pub fn default_shadow_options() -> ValidationOptions
+
 pub fn default_string_policy() -> StringPolicy
 
 pub fn default_validation_options() -> ValidationOptions
@@ -187,7 +189,7 @@ pub fn report_to_json(ValidationReport) -> String
 
 pub fn rollout_assessment_to_json(RolloutAssessment) -> String
 
-pub fn rollout_policy(min_samples? : Int, max_regressions? : Int, max_regression_basis_points? : Int, max_relaxations? : Int, max_diagnostic_shifts? : Int, max_truncated_cases? : Int, require_static_compatibility? : Bool, allow_static_review? : Bool) -> RolloutPolicy
+pub fn rollout_policy(min_samples? : Int, max_regressions? : Int, max_regression_basis_points? : Int, max_static_relaxations? : Int, max_relaxations? : Int, max_diagnostic_shifts? : Int, max_truncated_cases? : Int, require_static_compatibility? : Bool, allow_static_review? : Bool) -> RolloutPolicy
 
 pub fn root_path(String) -> String
 
@@ -217,7 +219,7 @@ pub fn sample_webhook_rule() -> Rule
 
 pub fn shadow_to_json(ShadowReport) -> String
 
-pub fn shadow_validate(Rule, Rule, Array[ValidationCase], options? : ValidationOptions) -> ShadowReport
+pub fn shadow_validate(Rule, Rule, Array[ValidationCase], options? : ValidationOptions, capture_witnesses? : Bool) -> ShadowReport
 
 pub fn stable_rollout_bucket(String, buckets? : Int) -> Int
 
@@ -406,6 +408,8 @@ pub(all) struct RegistryManifest {
 
 pub(all) struct RegistryPromotionResult {
   promoted : Bool
+  baseline_version : Int?
+  candidate_version : Int?
   result : RegistryResult
   assessment : RolloutAssessment?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -459,6 +463,7 @@ pub(all) struct RolloutPolicy {
   min_samples : Int
   max_regressions : Int
   max_regression_basis_points : Int
+  max_static_relaxations : Int
   max_relaxations : Int
   max_diagnostic_shifts : Int
   max_truncated_cases : Int
@@ -545,8 +550,8 @@ pub fn RuleRegistry::publish_json_checked(Self, String, String, Array[Validation
 pub fn RuleRegistry::publish_rule(Self, String, Rule, schema_json? : String, note? : String, published_by? : String) -> RegistryResult
 pub fn RuleRegistry::revision_count(Self, String) -> Int
 pub fn RuleRegistry::rollback(Self, String) -> RegistryResult
-pub fn RuleRegistry::shadow_versions(Self, String, Int, Int, Array[ValidationCase], options? : ValidationOptions) -> RegistryShadowResult
-pub fn RuleRegistry::shadow_with_active(Self, String, Int, Array[ValidationCase], options? : ValidationOptions) -> RegistryShadowResult
+pub fn RuleRegistry::shadow_versions(Self, String, Int, Int, Array[ValidationCase], options? : ValidationOptions, capture_witnesses? : Bool) -> RegistryShadowResult
+pub fn RuleRegistry::shadow_with_active(Self, String, Int, Array[ValidationCase], options? : ValidationOptions, capture_witnesses? : Bool) -> RegistryShadowResult
 pub fn RuleRegistry::validate_active(Self, String, Json, options? : ValidationOptions) -> RegistryValidationResult
 pub fn RuleRegistry::validate_active_json(Self, String, String, options? : ValidationOptions) -> RegistryValidationResult
 pub fn RuleRegistry::validate_active_json_array(Self, String, String, options? : ValidationOptions) -> RegistryBatchResult
@@ -570,7 +575,7 @@ pub(all) enum Severity {
 
 pub(all) struct ShadowCaseReport {
   id : String
-  value : Json
+  witness_json : String?
   outcome : ShadowOutcome
   baseline : ValidationReport
   candidate : ValidationReport

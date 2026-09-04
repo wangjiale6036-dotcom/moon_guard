@@ -37,14 +37,23 @@ fn shadow_outcome(
 }
 
 ///|
+/// Shadow reports default to redacted issue values because replay inputs often
+/// originate from production logs. Callers may opt back in explicitly.
+pub fn default_shadow_options() -> ValidationOptions {
+  default_validation_options().with_value_preview(false)
+}
+
+///|
 /// Replay payloads through a baseline and candidate contract. This operation
 /// is pure and does not mutate the registry, making it suitable for sampled
-/// production traffic and offline logs.
+/// traffic and offline logs. Payload capture is opt-in and limited to observed
+/// acceptance deltas so ordinary reports do not retain request bodies.
 pub fn shadow_validate(
   baseline : Rule,
   candidate : Rule,
   cases : Array[ValidationCase],
-  options? : ValidationOptions = default_validation_options(),
+  options? : ValidationOptions = default_shadow_options(),
+  capture_witnesses? : Bool = false,
 ) -> ShadowReport {
   let case_reports : Array[ShadowCaseReport] = []
   let baseline_reports : Array[ValidationReport] = []
@@ -79,9 +88,15 @@ pub fn shadow_validate(
     }
     baseline_reports.push(old_report)
     candidate_reports.push(next_report)
+    let witness_json = if capture_witnesses &&
+      (outcome == CandidateRegression || outcome == CandidateRelaxation) {
+      Some(case.value.stringify())
+    } else {
+      None
+    }
     case_reports.push({
       id: case.id,
-      value: case.value,
+      witness_json,
       outcome,
       baseline: old_report,
       candidate: next_report,
@@ -120,7 +135,13 @@ pub fn regression_witnesses(report : ShadowReport) -> Array[ValidationCase] {
   let result : Array[ValidationCase] = []
   for case in report.cases {
     if case.outcome == CandidateRegression {
-      result.push({ id: case.id, value: case.value })
+      match case.witness_json {
+        Some(text) => {
+          let value = @json.parse(text) catch { _ => continue }
+          result.push({ id: case.id, value })
+        }
+        None => ()
+      }
     }
   }
   result
@@ -133,7 +154,13 @@ pub fn relaxation_witnesses(report : ShadowReport) -> Array[ValidationCase] {
   let result : Array[ValidationCase] = []
   for case in report.cases {
     if case.outcome == CandidateRelaxation {
-      result.push({ id: case.id, value: case.value })
+      match case.witness_json {
+        Some(text) => {
+          let value = @json.parse(text) catch { _ => continue }
+          result.push({ id: case.id, value })
+        }
+        None => ()
+      }
     }
   }
   result
@@ -151,7 +178,8 @@ pub fn RuleRegistry::shadow_versions(
   baseline_version : Int,
   candidate_version : Int,
   cases : Array[ValidationCase],
-  options? : ValidationOptions = default_validation_options(),
+  options? : ValidationOptions = default_shadow_options(),
+  capture_witnesses? : Bool = false,
 ) -> RegistryShadowResult {
   match
     (
@@ -165,7 +193,13 @@ pub fn RuleRegistry::shadow_versions(
         baseline_version: Some(baseline_version),
         candidate_version: Some(candidate_version),
         report: Some(
-          shadow_validate(baseline.rule, candidate.rule, cases, options~),
+          shadow_validate(
+            baseline.rule,
+            candidate.rule,
+            cases,
+            options~,
+            capture_witnesses~,
+          ),
         ),
       }
     _ =>
@@ -185,7 +219,8 @@ pub fn RuleRegistry::shadow_with_active(
   channel : String,
   candidate_version : Int,
   cases : Array[ValidationCase],
-  options? : ValidationOptions = default_validation_options(),
+  options? : ValidationOptions = default_shadow_options(),
+  capture_witnesses? : Bool = false,
 ) -> RegistryShadowResult {
   match self.active_version(channel) {
     None =>
@@ -197,6 +232,13 @@ pub fn RuleRegistry::shadow_with_active(
         report: None,
       }
     Some(active) =>
-      self.shadow_versions(channel, active, candidate_version, cases, options~)
+      self.shadow_versions(
+        channel,
+        active,
+        candidate_version,
+        cases,
+        options~,
+        capture_witnesses~,
+      )
   }
 }

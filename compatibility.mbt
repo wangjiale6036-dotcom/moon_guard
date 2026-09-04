@@ -340,6 +340,41 @@ fn compare_string_set(
 }
 
 ///|
+/// `allowed=[]` disables the allow-list entirely, so the empty/non-empty
+/// boundary has different semantics from an ordinary set delta.
+fn compare_allowed_strings(
+  accumulator : CompatibilityAccumulator,
+  path : String,
+  previous : Array[String],
+  candidate : Array[String],
+) -> Unit {
+  if previous.is_empty() && candidate.is_empty() {
+    return
+  }
+  if previous.is_empty() {
+    add_rule_change(
+      accumulator,
+      path,
+      "allowed",
+      BreakingImpact,
+      "allow-list enabled; previously accepted strings may be rejected",
+    )
+    return
+  }
+  if candidate.is_empty() {
+    add_rule_change(
+      accumulator,
+      path,
+      "allowed",
+      RelaxingImpact,
+      "allow-list disabled; every string is now allowed by this constraint",
+    )
+    return
+  }
+  compare_string_set(accumulator, path, "allowed", previous, candidate, true)
+}
+
+///|
 fn compare_string_policies(
   accumulator : CompatibilityAccumulator,
   path : String,
@@ -402,13 +437,11 @@ fn compare_string_policies(
     previous.format,
     candidate.format,
   )
-  compare_string_set(
+  compare_allowed_strings(
     accumulator,
     compatibility_path(path, "allowed"),
-    "allowed",
     previous.allowed,
     candidate.allowed,
-    true,
   )
   compare_string_set(
     accumulator,
@@ -501,8 +534,8 @@ fn compare_number_policies(
           accumulator,
           compatibility_path(path, "multipleOf"),
           "multipleOf",
-          BreakingImpact,
-          "multiple-of constraint changed",
+          ReviewImpact,
+          "multiple-of constraint changed; inclusion cannot be proven safely",
         )
     }
   }
@@ -663,16 +696,16 @@ fn compare_array_policies(
       accumulator,
       compatibility_path(path, "prefixItems"),
       "prefixItems",
-      BreakingImpact,
-      "tuple prefix constraints added",
+      ReviewImpact,
+      "tuple prefix length increased; interaction with items requires replay",
     )
   } else if candidate.prefix_items.length() < previous.prefix_items.length() {
     add_rule_change(
       accumulator,
       compatibility_path(path, "prefixItems"),
       "prefixItems",
-      RelaxingImpact,
-      "tuple prefix constraints removed",
+      ReviewImpact,
+      "tuple prefix length decreased; interaction with items requires replay",
     )
   }
   if previous.contains != candidate.contains ||
@@ -709,7 +742,9 @@ fn compare_object_policies(
     previous.max_properties,
     candidate.max_properties,
   )
-  if previous.allow_additional != candidate.allow_additional {
+  if previous.additional_rule is None &&
+    candidate.additional_rule is None &&
+    previous.allow_additional != candidate.allow_additional {
     add_rule_change(
       accumulator,
       compatibility_path(path, "additionalProperties"),
@@ -762,7 +797,9 @@ fn compare_object_policies(
           accumulator,
           property_path,
           "properties",
-          if candidate.allow_additional {
+          if candidate.additional_rule is Some(_) {
+            ReviewImpact
+          } else if candidate.allow_additional {
             RelaxingImpact
           } else {
             BreakingImpact
@@ -779,8 +816,10 @@ fn compare_object_policies(
       )
       let impact = if next_property.required {
         BreakingImpact
-      } else if previous.allow_additional {
+      } else if previous.additional_rule is Some(_) {
         ReviewImpact
+      } else if previous.allow_additional {
+        BreakingImpact
       } else {
         RelaxingImpact
       }
@@ -797,14 +836,39 @@ fn compare_object_policies(
       )
     }
   }
-  if previous.additional_rule != candidate.additional_rule {
-    add_rule_change(
-      accumulator,
-      compatibility_path(path, "additionalRule"),
-      "additionalProperties",
-      ReviewImpact,
-      "additional-property rule changed",
-    )
+  match (previous.additional_rule, candidate.additional_rule) {
+    (Some(old), Some(next)) =>
+      compare_rule_node(
+        accumulator,
+        compatibility_path(path, "additionalProperties"),
+        old,
+        next,
+      )
+    (None, Some(_)) =>
+      add_rule_change(
+        accumulator,
+        compatibility_path(path, "additionalProperties"),
+        "additionalProperties",
+        if previous.allow_additional {
+          BreakingImpact
+        } else {
+          RelaxingImpact
+        },
+        "typed additional-property rule added",
+      )
+    (Some(_), None) =>
+      add_rule_change(
+        accumulator,
+        compatibility_path(path, "additionalProperties"),
+        "additionalProperties",
+        if candidate.allow_additional {
+          RelaxingImpact
+        } else {
+          BreakingImpact
+        },
+        "typed additional-property rule removed",
+      )
+    _ => ()
   }
   if previous.dependencies != candidate.dependencies {
     add_rule_change(
@@ -877,6 +941,58 @@ fn compare_same_combinator(
       },
       "combinator branch removed",
     )
+  }
+}
+
+///|
+fn rule_kind_hint(rule : Rule) -> ValueKind? {
+  match rule {
+    Kind(expected) => Some(expected)
+    StringMatches(_) => Some(StringValue)
+    NumberMatches(policy) =>
+      if policy.integer_only {
+        Some(IntegerValue)
+      } else {
+        Some(NumberValue)
+      }
+    ArrayMatches(_) => Some(ArrayValue)
+    ObjectMatches(_) => Some(ObjectValue)
+    _ => None
+  }
+}
+
+///|
+fn add_rule_shape_change(
+  accumulator : CompatibilityAccumulator,
+  path : String,
+  previous : Rule,
+  candidate : Rule,
+) -> Unit {
+  match (rule_kind_hint(previous), rule_kind_hint(candidate)) {
+    (Some(old), Some(next)) => {
+      let impact = if old == next {
+        ReviewImpact
+      } else if next == AnyValue || (old == IntegerValue && next == NumberValue) {
+        RelaxingImpact
+      } else {
+        BreakingImpact
+      }
+      add_rule_change(
+        accumulator,
+        compatibility_path(path, "type"),
+        "type",
+        impact,
+        "rule type changed from \{kind_name(old)} to \{kind_name(next)}",
+      )
+    }
+    _ =>
+      add_rule_change(
+        accumulator,
+        path,
+        "rule",
+        ReviewImpact,
+        "rule shape changed and backward compatibility cannot be proven",
+      )
   }
 }
 
@@ -958,7 +1074,9 @@ fn compare_rule_node(
     (InValues(old), InValues(next)) =>
       compare_json_set(accumulator, compatibility_path(path, "enum"), old, next)
     (EqualsValue(old), InValues(next)) =>
-      if json_array_contains(next, old) {
+      if next.length() == 1 && json_array_contains(next, old) {
+        ()
+      } else if json_array_contains(next, old) {
         add_rule_change(
           accumulator,
           compatibility_path(path, "enum"),
@@ -976,25 +1094,61 @@ fn compare_rule_node(
         )
       }
     (InValues(old), EqualsValue(next)) =>
-      add_rule_change(
-        accumulator,
-        compatibility_path(path, "const"),
-        "const",
-        if old.length() == 1 && json_array_contains(old, next) {
-          ReviewImpact
-        } else {
-          BreakingImpact
-        },
-        "enum narrowed to a constant",
-      )
+      if old.length() == 1 && json_array_contains(old, next) {
+        ()
+      } else {
+        add_rule_change(
+          accumulator,
+          compatibility_path(path, "const"),
+          "const",
+          BreakingImpact,
+          "enum narrowed to a constant",
+        )
+      }
     (AllOf(old), AllOf(next)) =>
       compare_same_combinator(accumulator, path, "allOf", old, next, true)
     (AnyOf(old), AnyOf(next)) =>
       compare_same_combinator(accumulator, path, "anyOf", old, next, false)
-    (OneOf(old), OneOf(next)) =>
-      compare_same_combinator(accumulator, path, "oneOf", old, next, true)
-    (NoneOf(old), NoneOf(next)) =>
-      compare_same_combinator(accumulator, path, "noneOf", old, next, true)
+    (OneOf(_), OneOf(_)) =>
+      add_rule_change(
+        accumulator,
+        compatibility_path(path, "oneOf"),
+        "oneOf",
+        ReviewImpact,
+        "exclusive alternatives changed; overlap requires shadow evidence",
+      )
+    (NoneOf(_), NoneOf(_)) =>
+      add_rule_change(
+        accumulator,
+        compatibility_path(path, "noneOf"),
+        "noneOf",
+        ReviewImpact,
+        "negated alternatives changed; polarity requires shadow evidence",
+      )
+    (old, AllOf(next)) =>
+      if next.contains(old) {
+        add_rule_change(
+          accumulator,
+          compatibility_path(path, "allOf"),
+          "allOf",
+          BreakingImpact,
+          "candidate adds conjunctive constraints",
+        )
+      } else {
+        add_rule_shape_change(accumulator, path, old, AllOf(next))
+      }
+    (AllOf(old), next) =>
+      if old.contains(next) {
+        add_rule_change(
+          accumulator,
+          compatibility_path(path, "allOf"),
+          "allOf",
+          RelaxingImpact,
+          "candidate removes conjunctive constraints",
+        )
+      } else {
+        add_rule_shape_change(accumulator, path, AllOf(old), next)
+      }
     (Nullable(old), Nullable(next)) =>
       compare_rule_node(accumulator, path, old, next)
     (Optional(old), Optional(next)) =>
@@ -1025,7 +1179,7 @@ fn compare_rule_node(
         compatibility_path(path, "optional"),
         "optional",
         RelaxingImpact,
-        "missing value is now accepted",
+        "null is now accepted by the optional wrapper",
       )
       compare_rule_node(accumulator, path, old, next)
     }
@@ -1035,7 +1189,7 @@ fn compare_rule_node(
         compatibility_path(path, "optional"),
         "optional",
         BreakingImpact,
-        "missing value is no longer accepted",
+        "null is no longer accepted by the optional wrapper",
       )
       compare_rule_node(accumulator, path, old, next)
     }
@@ -1056,8 +1210,8 @@ fn compare_rule_node(
           accumulator,
           compatibility_path(path, "atPath"),
           "atPath",
-          BreakingImpact,
-          "target path changed",
+          ReviewImpact,
+          "target path changed; compatibility requires shadow evidence",
         )
       }
     (
@@ -1108,14 +1262,7 @@ fn compare_rule_node(
       }
     (WarningRule(_, old), WarningRule(_, next)) =>
       compare_rule_node(accumulator, path, old, next)
-    _ =>
-      add_rule_change(
-        accumulator,
-        path,
-        "rule",
-        BreakingImpact,
-        "rule shape changed and backward compatibility cannot be proven",
-      )
+    _ => add_rule_shape_change(accumulator, path, previous, candidate)
   }
 }
 

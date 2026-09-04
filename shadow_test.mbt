@@ -165,9 +165,12 @@ test "shadow JSON is deterministic" {
 
 ///|
 test "shadow regression witnesses preserve input" {
-  let report = shadow_validate(string(), string_rule(min_length=Some(3)), [
-    shadow_case("short", "\"x\""),
-  ])
+  let report = shadow_validate(
+    string(),
+    string_rule(min_length=Some(3)),
+    [shadow_case("short", "\"x\"")],
+    capture_witnesses=true,
+  )
   let witnesses = regression_witnesses(report)
   assert_eq(witnesses.length(), 1)
   assert_eq(witnesses[0].id, "short")
@@ -176,10 +179,35 @@ test "shadow regression witnesses preserve input" {
 
 ///|
 test "shadow relaxation witnesses preserve input" {
-  let report = shadow_validate(string_rule(min_length=Some(3)), string(), [
-    shadow_case("newly-valid", "\"x\""),
-  ])
+  let report = shadow_validate(
+    string_rule(min_length=Some(3)),
+    string(),
+    [shadow_case("newly-valid", "\"x\"")],
+    capture_witnesses=true,
+  )
   let witnesses = relaxation_witnesses(report)
   assert_eq(witnesses.length(), 1)
   assert_eq(witnesses[0].id, "newly-valid")
+}
+
+///|
+test "shadow reports redact payloads by default" {
+  let report = shadow_validate(string(), string_rule(prefix=Some("public-")), [
+    shadow_case("secret", "\"private-token\""),
+  ])
+  assert_true(report.cases[0].witness_json is None)
+  assert_false(shadow_to_json(report).contains("private-token"))
+  assert_eq(regression_witnesses(report).length(), 0)
+}
+
+///|
+test "witness capture stores only acceptance deltas" {
+  let report = shadow_validate(
+    string(),
+    string_rule(min_length=Some(3)),
+    [shadow_case("stable", "\"hello\""), shadow_case("regression", "\"x\"")],
+    capture_witnesses=true,
+  )
+  assert_true(report.cases[0].witness_json is None)
+  assert_true(report.cases[1].witness_json is Some(_))
 }
