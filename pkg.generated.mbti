@@ -201,6 +201,10 @@ pub fn sample_valid_user_json() -> String
 
 pub fn sample_webhook_rule() -> Rule
 
+pub fn shadow_to_json(ShadowReport) -> String
+
+pub fn shadow_validate(Rule, Rule, Array[ValidationCase], options? : ValidationOptions) -> ShadowReport
+
 pub fn strict_object(Array[PropertyRule]) -> Rule
 
 pub fn string() -> Rule
@@ -388,6 +392,14 @@ pub(all) struct RegistryRevisionInfo {
   schema_json : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RegistryShadowResult {
+  found : Bool
+  channel : String
+  baseline_version : Int?
+  candidate_version : Int?
+  report : ShadowReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RegistryValidationResult {
   found : Bool
   channel : String
@@ -465,6 +477,8 @@ pub fn RuleRegistry::publish_json_checked(Self, String, String, Array[Validation
 pub fn RuleRegistry::publish_rule(Self, String, Rule, schema_json? : String, note? : String, published_by? : String) -> RegistryResult
 pub fn RuleRegistry::revision_count(Self, String) -> Int
 pub fn RuleRegistry::rollback(Self, String) -> RegistryResult
+pub fn RuleRegistry::shadow_versions(Self, String, Int, Int, Array[ValidationCase], options? : ValidationOptions) -> RegistryShadowResult
+pub fn RuleRegistry::shadow_with_active(Self, String, Int, Array[ValidationCase], options? : ValidationOptions) -> RegistryShadowResult
 pub fn RuleRegistry::validate_active(Self, String, Json, options? : ValidationOptions) -> RegistryValidationResult
 pub fn RuleRegistry::validate_active_json(Self, String, String, options? : ValidationOptions) -> RegistryValidationResult
 pub fn RuleRegistry::validate_active_json_array(Self, String, String, options? : ValidationOptions) -> RegistryBatchResult
@@ -483,6 +497,42 @@ pub(all) enum Severity {
   Error
   Warning
   Info
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ShadowCaseReport {
+  id : String
+  outcome : ShadowOutcome
+  baseline : ValidationReport
+  candidate : ValidationReport
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ShadowMetrics {
+  total : Int
+  stable_accept : Int
+  stable_reject : Int
+  regressions : Int
+  relaxations : Int
+  diagnostic_shifts : Int
+  disagreement_count : Int
+  baseline_passed : Int
+  candidate_passed : Int
+  truncated_cases : Int
+  regression_basis_points : Int
+  baseline_issues : Array[IssueCount]
+  candidate_issues : Array[IssueCount]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum ShadowOutcome {
+  StableAccept
+  StableReject
+  CandidateRegression
+  CandidateRelaxation
+  DiagnosticShift
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ShadowReport {
+  metrics : ShadowMetrics
+  cases : Array[ShadowCaseReport]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct StringPolicy {
