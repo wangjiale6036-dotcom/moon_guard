@@ -6,7 +6,7 @@ MoonGuard 是一个使用 MoonBit 原生实现的**可解释 API 契约演化与
 
 ## 项目状态
 
-- 7,522 行非测试 MoonBit 源码（含 CLI，按物理行统计）
+- 7,526 行非测试 MoonBit 源码（含 CLI，按物理行统计）
 - 310 个自动化测试，其中 110 个为 v0.3 Compatibility Radar 专项测试
 - 4 种 MoonBit 后端持续集成
 - 18 种内置字符串格式

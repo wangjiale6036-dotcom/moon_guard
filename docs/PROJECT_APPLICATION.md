@@ -111,7 +111,7 @@ MoonBit DSL / JSON 规则
 
 ## 七、质量与可运行证据
 
-- 7,522 行非测试 MoonBit 源码（含 CLI，按物理行统计）；
+- 7,526 行非测试 MoonBit 源码（含 CLI，按物理行统计）；
 - 310 个自动化测试，其中 110 个为 Compatibility Radar 专项回归；
 - wasm、wasm-gc、js、native 四种后端使用同一套测试；
 - GitHub Actions 执行格式检查、全目标类型检查、分后端测试和全目标构建；
