@@ -19,6 +19,8 @@ pub fn array() -> Rule
 
 pub fn array_rule(items? : Rule?, prefix_items? : Array[Rule], min_items? : Int?, max_items? : Int?, unique_items? : Bool, contains? : Rule?, min_contains? : Int, max_contains? : Int?) -> Rule
 
+pub fn assess_rollout(CompatibilityReport?, ShadowReport, policy? : RolloutPolicy) -> RolloutAssessment
+
 pub fn at_path(String, Rule) -> Rule
 
 pub fn batch_issue_histogram(BatchReport) -> Array[IssueCount]
@@ -31,11 +33,21 @@ pub fn boolean() -> Rule
 
 pub fn child_paths(Json, path? : String, style? : String) -> Array[String]
 
+pub fn compare_rule_json(String, String) -> CompatibilityParseResult
+
+pub fn compare_rules(Rule, Rule) -> CompatibilityReport
+
+pub fn compatibility_to_json(CompatibilityReport) -> String
+
 pub fn default_array_policy() -> ArrayPolicy
 
 pub fn default_number_policy() -> NumberPolicy
 
 pub fn default_object_policy() -> ObjectPolicy
+
+pub fn default_rollout_policy() -> RolloutPolicy
+
+pub fn default_shadow_options() -> ValidationOptions
 
 pub fn default_string_policy() -> StringPolicy
 
@@ -62,6 +74,8 @@ pub fn integer() -> Rule
 pub fn is_base64(String) -> Bool
 
 pub fn is_base64url(String) -> Bool
+
+pub fn is_canary_selected(String, Int) -> Bool
 
 pub fn is_credit_card(String) -> Bool
 
@@ -165,9 +179,17 @@ pub fn property(String, Rule, required? : Bool, deprecated? : Bool, description?
 
 pub fn range(Double, Double) -> Rule
 
+pub fn regression_witnesses(ShadowReport) -> Array[ValidationCase]
+
 pub fn reject(message? : String) -> Rule
 
+pub fn relaxation_witnesses(ShadowReport) -> Array[ValidationCase]
+
 pub fn report_to_json(ValidationReport) -> String
+
+pub fn rollout_assessment_to_json(RolloutAssessment) -> String
+
+pub fn rollout_policy(min_samples? : Int, max_regressions? : Int, max_regression_basis_points? : Int, max_static_relaxations? : Int, max_relaxations? : Int, max_diagnostic_shifts? : Int, max_truncated_cases? : Int, require_static_compatibility? : Bool, allow_static_review? : Bool) -> RolloutPolicy
 
 pub fn root_path(String) -> String
 
@@ -194,6 +216,12 @@ pub fn sample_user_rule() -> Rule
 pub fn sample_valid_user_json() -> String
 
 pub fn sample_webhook_rule() -> Rule
+
+pub fn shadow_to_json(ShadowReport) -> String
+
+pub fn shadow_validate(Rule, Rule, Array[ValidationCase], options? : ValidationOptions, capture_witnesses? : Bool) -> ShadowReport
+
+pub fn stable_rollout_bucket(String, buckets? : Int) -> Int
 
 pub fn strict_object(Array[PropertyRule]) -> Rule
 
@@ -255,9 +283,41 @@ pub(all) struct BatchReport {
   cases : Array[CaseReport]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct CanaryValidationResult {
+  found : Bool
+  channel : String
+  baseline_version : Int?
+  candidate_version : Int?
+  served_version : Int?
+  routed_to_candidate : Bool
+  bucket : Int?
+  report : ValidationReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct CaseReport {
   id : String
   report : ValidationReport
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum ChangeImpact {
+  BreakingImpact
+  RelaxingImpact
+  ReviewImpact
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CompatibilityParseResult {
+  ok : Bool
+  errors : Array[String]
+  report : CompatibilityReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CompatibilityReport {
+  backward_compatible : Bool
+  score : Int
+  breaking_count : Int
+  relaxing_count : Int
+  review_count : Int
+  changes : Array[RuleChange]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct IssueCount {
@@ -327,6 +387,14 @@ pub(all) struct RegistryChannelInfo {
   revisions : Array[RegistryRevisionInfo]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RegistryCompatibilityResult {
+  found : Bool
+  channel : String
+  baseline_version : Int?
+  candidate_version : Int?
+  report : CompatibilityReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RegistryGateResult {
   published : Bool
   result : RegistryResult
@@ -336,6 +404,14 @@ pub(all) struct RegistryGateResult {
 pub(all) struct RegistryManifest {
   format_version : Int
   channels : Array[RegistryChannelInfo]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RegistryPromotionResult {
+  promoted : Bool
+  baseline_version : Int?
+  candidate_version : Int?
+  result : RegistryResult
+  assessment : RolloutAssessment?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RegistryResult {
@@ -353,11 +429,53 @@ pub(all) struct RegistryRevisionInfo {
   schema_json : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RegistryRolloutAssessment {
+  found : Bool
+  channel : String
+  baseline_version : Int?
+  candidate_version : Int?
+  assessment : RolloutAssessment?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RegistryShadowResult {
+  found : Bool
+  channel : String
+  baseline_version : Int?
+  candidate_version : Int?
+  report : ShadowReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RegistryValidationResult {
   found : Bool
   channel : String
   version : Int?
   report : ValidationReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RolloutAssessment {
+  recommendation : RolloutRecommendation
+  reasons : Array[String]
+  static_report : CompatibilityReport?
+  shadow_metrics : ShadowMetrics
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RolloutPolicy {
+  min_samples : Int
+  max_regressions : Int
+  max_regression_basis_points : Int
+  max_static_relaxations : Int
+  max_relaxations : Int
+  max_diagnostic_shifts : Int
+  max_truncated_cases : Int
+  require_static_compatibility : Bool
+  allow_static_review : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum RolloutRecommendation {
+  PromoteCandidate
+  HoldCandidate
+  RollbackCandidate
+  InsufficientEvidence
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum Rule {
@@ -392,6 +510,13 @@ pub(all) struct RuleAnalysis {
   warnings : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RuleChange {
+  path : String
+  keyword : String
+  impact : ChangeImpact
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RuleChannel {
   name : String
   active_version : Int?
@@ -410,21 +535,28 @@ pub struct RuleRegistry {
 pub fn RuleRegistry::activate(Self, String, Int) -> RegistryResult
 pub fn RuleRegistry::active_revision(Self, String) -> RuleRevision?
 pub fn RuleRegistry::active_version(Self, String) -> Int?
+pub fn RuleRegistry::assess_candidate(Self, String, Int, Array[ValidationCase], policy? : RolloutPolicy, options? : ValidationOptions) -> RegistryRolloutAssessment
 pub fn RuleRegistry::channel_count(Self) -> Int
 pub fn RuleRegistry::channel_names(Self) -> Array[String]
+pub fn RuleRegistry::compare_versions(Self, String, Int, Int) -> RegistryCompatibilityResult
+pub fn RuleRegistry::compare_with_active(Self, String, Int) -> RegistryCompatibilityResult
 pub fn RuleRegistry::get_revision(Self, String, Int) -> RuleRevision?
 pub fn RuleRegistry::list_revisions(Self, String) -> Array[RuleRevision]
 pub fn RuleRegistry::manifest(Self) -> RegistryManifest
 pub fn RuleRegistry::manifest_json(Self, indent? : Int) -> String
+pub fn RuleRegistry::promote_if_safe(Self, String, Int, Array[ValidationCase], policy? : RolloutPolicy, options? : ValidationOptions) -> RegistryPromotionResult
 pub fn RuleRegistry::publish_json(Self, String, String, note? : String, published_by? : String) -> RegistryResult
 pub fn RuleRegistry::publish_json_checked(Self, String, String, Array[ValidationCase], note? : String, published_by? : String, options? : ValidationOptions) -> RegistryGateResult
 pub fn RuleRegistry::publish_rule(Self, String, Rule, schema_json? : String, note? : String, published_by? : String) -> RegistryResult
 pub fn RuleRegistry::revision_count(Self, String) -> Int
 pub fn RuleRegistry::rollback(Self, String) -> RegistryResult
+pub fn RuleRegistry::shadow_versions(Self, String, Int, Int, Array[ValidationCase], options? : ValidationOptions, capture_witnesses? : Bool) -> RegistryShadowResult
+pub fn RuleRegistry::shadow_with_active(Self, String, Int, Array[ValidationCase], options? : ValidationOptions, capture_witnesses? : Bool) -> RegistryShadowResult
 pub fn RuleRegistry::validate_active(Self, String, Json, options? : ValidationOptions) -> RegistryValidationResult
 pub fn RuleRegistry::validate_active_json(Self, String, String, options? : ValidationOptions) -> RegistryValidationResult
 pub fn RuleRegistry::validate_active_json_array(Self, String, String, options? : ValidationOptions) -> RegistryBatchResult
 pub fn RuleRegistry::validate_active_json_lines(Self, String, String, options? : ValidationOptions) -> RegistryBatchResult
+pub fn RuleRegistry::validate_canary_json(Self, String, Int, String, Int, String, options? : ValidationOptions) -> CanaryValidationResult
 
 pub(all) struct RuleRevision {
   channel : String
@@ -439,6 +571,43 @@ pub(all) enum Severity {
   Error
   Warning
   Info
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ShadowCaseReport {
+  id : String
+  witness_json : String?
+  outcome : ShadowOutcome
+  baseline : ValidationReport
+  candidate : ValidationReport
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ShadowMetrics {
+  total : Int
+  stable_accept : Int
+  stable_reject : Int
+  regressions : Int
+  relaxations : Int
+  diagnostic_shifts : Int
+  disagreement_count : Int
+  baseline_passed : Int
+  candidate_passed : Int
+  truncated_cases : Int
+  regression_basis_points : Int
+  baseline_issues : Array[IssueCount]
+  candidate_issues : Array[IssueCount]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum ShadowOutcome {
+  StableAccept
+  StableReject
+  CandidateRegression
+  CandidateRelaxation
+  DiagnosticShift
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ShadowReport {
+  metrics : ShadowMetrics
+  cases : Array[ShadowCaseReport]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct StringPolicy {

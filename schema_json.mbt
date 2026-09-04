@@ -716,7 +716,7 @@ pub fn parse_rule_document(text : String) -> RuleParseResult {
   let errors : Array[String] = []
   let warnings : Array[String] = []
   let rule = parse_rule_value(value, "", errors, warnings, 0)
-  { rule: if errors.is_empty() { rule } else { None }, errors, warnings }
+  { rule: if errors.is_empty() { rule } else { None }, errors, warnings, }
 }
 
 ///|

@@ -1033,9 +1033,9 @@ test "rule optimization removes accept from allOf" {
 ///|
 test "batch validation counts passes" {
   let cases : Array[ValidationCase] = [
-    { id: "a", value: test_json("1") },
-    { id: "b", value: test_json("2") },
-    { id: "c", value: "x".to_json() },
+    { id: "a", value: test_json("1"), },
+    { id: "b", value: test_json("2"), },
+    { id: "c", value: "x".to_json(), },
   ]
   let report = validate_batch(integer(), cases)
   assert_eq(report.passed, 2)

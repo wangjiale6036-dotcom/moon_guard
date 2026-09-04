@@ -1,0 +1,6 @@
+import {
+  "moonbitlang/core/json",
+  "wangjiale6036-dotcom/moon_guard" @guard,
+}
+
+pkgtype(kind: "executable")

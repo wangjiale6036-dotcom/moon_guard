@@ -4,7 +4,7 @@ fn registry_success(
   version : Int?,
   message : String,
 ) -> RegistryResult {
-  { ok: true, code: "registry.ok", message, channel, version }
+  { ok: true, code: "registry.ok", message, channel, version, }
 }
 
 ///|
@@ -13,7 +13,7 @@ fn registry_failure(
   code : String,
   message : String,
 ) -> RegistryResult {
-  { ok: false, code, message, channel, version: None }
+  { ok: false, code, message, channel, version: None, }
 }
 
 ///|
@@ -40,7 +40,7 @@ fn revision_index(channel : RuleChannel, version : Int) -> Int {
 /// Create an isolated registry. The value can be passed freely because its
 /// channel array retains reference semantics for intentional mutations.
 pub fn new_rule_registry() -> RuleRegistry {
-  { channels: [] }
+  { channels: [], }
 }
 
 ///|
@@ -234,7 +234,7 @@ pub fn RuleRegistry::activate(
       channel, "registry.version.missing", "revision does not exist",
     )
   }
-  self.channels[channel_index] = { ..entry, active_version: Some(version) }
+  self.channels[channel_index] = { ..entry, active_version: Some(version), }
   registry_success(channel, Some(version), "rule revision activated")
 }
 
@@ -281,7 +281,7 @@ pub fn RuleRegistry::validate_active(
   options? : ValidationOptions = default_validation_options(),
 ) -> RegistryValidationResult {
   match self.active_revision(channel) {
-    None => { found: false, channel, version: None, report: None }
+    None => { found: false, channel, version: None, report: None, }
     Some(revision) =>
       {
         found: true,
@@ -300,7 +300,7 @@ pub fn RuleRegistry::validate_active_json(
   options? : ValidationOptions = default_validation_options(),
 ) -> RegistryValidationResult {
   match self.active_revision(channel) {
-    None => { found: false, channel, version: None, report: None }
+    None => { found: false, channel, version: None, report: None, }
     Some(revision) =>
       {
         found: true,
@@ -319,7 +319,7 @@ pub fn RuleRegistry::validate_active_json_array(
   options? : ValidationOptions = default_validation_options(),
 ) -> RegistryBatchResult {
   match self.active_revision(channel) {
-    None => { found: false, channel, version: None, report: None }
+    None => { found: false, channel, version: None, report: None, }
     Some(revision) =>
       {
         found: true,
@@ -338,7 +338,7 @@ pub fn RuleRegistry::validate_active_json_lines(
   options? : ValidationOptions = default_validation_options(),
 ) -> RegistryBatchResult {
   match self.active_revision(channel) {
-    None => { found: false, channel, version: None, report: None }
+    None => { found: false, channel, version: None, report: None, }
     Some(revision) =>
       {
         found: true,
@@ -395,7 +395,7 @@ pub fn RuleRegistry::publish_json_checked(
     note~,
     published_by~,
   )
-  { published: result.ok, result, compatibility: Some(compatibility) }
+  { published: result.ok, result, compatibility: Some(compatibility), }
 }
 
 ///|
@@ -418,7 +418,7 @@ pub fn RuleRegistry::manifest(self : RuleRegistry) -> RegistryManifest {
       revisions,
     })
   }
-  { format_version: 1, channels }
+  { format_version: 1, channels, }
 }
 
 ///|
@@ -426,7 +426,7 @@ pub fn RuleRegistry::manifest_json(
   self : RuleRegistry,
   indent? : Int = 2,
 ) -> String {
-  self.manifest().to_json().stringify(indent~)
+  ToJson::to_json(self.manifest()).stringify(indent~)
 }
 
 ///|

@@ -17,7 +17,7 @@ pub fn new_validator(
   rule : Rule,
   options? : ValidationOptions = default_validation_options(),
 ) -> Validator {
-  { rule, options }
+  { rule, options, }
 }
 
 ///|
@@ -50,7 +50,7 @@ pub fn boolean() -> Rule {
 
 ///|
 pub fn integer() -> Rule {
-  NumberMatches({ ..default_number_policy(), integer_only: true })
+  NumberMatches({ ..default_number_policy(), integer_only: true, })
 }
 
 ///|
@@ -258,7 +258,7 @@ pub fn property(
   deprecated? : Bool = false,
   description? : String = "",
 ) -> PropertyRule {
-  { name, rule, required, deprecated, description }
+  { name, rule, required, deprecated, description, }
 }
 
 ///|
@@ -285,7 +285,7 @@ pub fn dependency(
   property : String,
   requires : Array[String],
 ) -> PropertyDependency {
-  { property, requires }
+  { property, requires, }
 }
 
 ///|
@@ -405,7 +405,7 @@ pub fn ValidationOptions::with_fail_fast(
   self : ValidationOptions,
   enabled : Bool,
 ) -> ValidationOptions {
-  { ..self, fail_fast: enabled }
+  { ..self, fail_fast: enabled, }
 }
 
 ///|
@@ -413,7 +413,7 @@ pub fn ValidationOptions::with_max_issues(
   self : ValidationOptions,
   count : Int,
 ) -> ValidationOptions {
-  { ..self, max_issues: count.max(1) }
+  { ..self, max_issues: count.max(1), }
 }
 
 ///|
@@ -421,7 +421,7 @@ pub fn ValidationOptions::with_max_depth(
   self : ValidationOptions,
   depth : Int,
 ) -> ValidationOptions {
-  { ..self, max_depth: depth.max(1) }
+  { ..self, max_depth: depth.max(1), }
 }
 
 ///|
@@ -429,7 +429,7 @@ pub fn ValidationOptions::with_rule_budget(
   self : ValidationOptions,
   visits : Int,
 ) -> ValidationOptions {
-  { ..self, max_rule_visits: visits.max(1) }
+  { ..self, max_rule_visits: visits.max(1), }
 }
 
 ///|
@@ -437,7 +437,7 @@ pub fn ValidationOptions::with_value_preview(
   self : ValidationOptions,
   enabled : Bool,
 ) -> ValidationOptions {
-  { ..self, include_value_preview: enabled }
+  { ..self, include_value_preview: enabled, }
 }
 
 ///|
@@ -445,7 +445,7 @@ pub fn ValidationOptions::with_warnings(
   self : ValidationOptions,
   enabled : Bool,
 ) -> ValidationOptions {
-  { ..self, include_warnings: enabled }
+  { ..self, include_warnings: enabled, }
 }
 
 ///|
@@ -453,5 +453,5 @@ pub fn ValidationOptions::with_path_style(
   self : ValidationOptions,
   style : String,
 ) -> ValidationOptions {
-  { ..self, path_style: style }
+  { ..self, path_style: style, }
 }

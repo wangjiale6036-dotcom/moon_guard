@@ -1356,5 +1356,5 @@ pub fn warning_issues(report : ValidationReport) -> Array[ValidationIssue] {
 
 ///|
 pub fn report_to_json(report : ValidationReport) -> String {
-  report.to_json().stringify(indent=2)
+  ToJson::to_json(report).stringify(indent=2)
 }
